@@ -5,10 +5,10 @@ import {
   SignUpButton,
   useUser,
 } from '@clerk/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const API_BASE_URL = 'http://127.0.0.1:8000';
-const defaultQuestion = 'Quelles sont les vertus de la patience selon le Coran et les Hadiths ?';
+const CHAT_STORAGE_KEY = 'ilm-ai-chat-history-v1';
 
 const legalSchools = ['Hanafi', 'Maliki', 'Shafi‘i', 'Hanbali'];
 const languages = ['Francais', 'Arabe', 'Anglais'];
@@ -54,13 +54,73 @@ const fallbackProfile = {
   notifications_enabled: true,
 };
 
+function truncateTitle(text) {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return 'Nouvelle discussion';
+  }
+  return normalized.length > 56 ? `${normalized.slice(0, 56).trim()}...` : normalized;
+}
+
+function createEmptyConversation() {
+  const timestamp = new Date().toISOString();
+  return {
+    id: `conversation-${crypto.randomUUID()}`,
+    title: 'Nouvelle discussion',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    messages: [],
+  };
+}
+
+function loadStoredChatState() {
+  if (typeof window === 'undefined') {
+    const initialConversation = createEmptyConversation();
+    return {
+      conversations: [initialConversation],
+      activeConversationId: initialConversation.id,
+    };
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(CHAT_STORAGE_KEY);
+    if (!rawValue) {
+      throw new Error('empty_storage');
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    if (!Array.isArray(parsedValue.conversations) || !parsedValue.conversations.length) {
+      throw new Error('invalid_conversations');
+    }
+
+    const activeConversationExists = parsedValue.conversations.some(
+      (conversation) => conversation.id === parsedValue.activeConversationId
+    );
+
+    return {
+      conversations: parsedValue.conversations,
+      activeConversationId: activeConversationExists
+        ? parsedValue.activeConversationId
+        : parsedValue.conversations[0].id,
+    };
+  } catch {
+    const initialConversation = createEmptyConversation();
+    return {
+      conversations: [initialConversation],
+      activeConversationId: initialConversation.id,
+    };
+  }
+}
+
 function toSourceCard(source, index) {
   const fallbackSourceName =
     source.type === 'quran'
-      ? 'Coran'
+      ? 'Quran'
       : source.type === 'tafsir'
         ? 'Tafsir'
         : 'Hadith';
+  const displaySourceName =
+    source.type === 'quran' ? 'Quran' : (source.source ?? fallbackSourceName);
 
   return {
     id: `${source.type}-${index}`,
@@ -70,7 +130,7 @@ function toSourceCard(source, index) {
         : source.type === 'tafsir'
           ? 'menu_book'
           : 'history_edu',
-    source: source.source ?? fallbackSourceName,
+    source: displaySourceName,
     reference: source.ref,
     role: source.role,
     type: source.type,
@@ -129,18 +189,51 @@ function SourceCard({ card }) {
   );
 }
 
+function createAssistantMessage(response) {
+  return {
+    id: `assistant-${crypto.randomUUID()}`,
+    role: 'assistant',
+    answer: response.answer,
+    displayedAnswer: '',
+    sources: response.sources,
+    isComplete: false,
+    feedback: null,
+  };
+}
+
 export default function ChatPage() {
   const { isLoaded: isUserLoaded, user } = useUser();
   const [activeView, setActiveView] = useState('response');
   const [activeScreen, setActiveScreen] = useState('chat');
-  const [questionInput, setQuestionInput] = useState(defaultQuestion);
-  const [chatData, setChatData] = useState(fallbackResponse);
-  const [lastQuestion, setLastQuestion] = useState(defaultQuestion);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [questionInput, setQuestionInput] = useState('');
   const [profile, setProfile] = useState(fallbackProfile);
+  const [chatState, setChatState] = useState(() => loadStoredChatState());
   const [isLoadingChat, setIsLoadingChat] = useState(false);
+  const [isAnimatingAnswer, setIsAnimatingAnswer] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [chatError, setChatError] = useState('');
   const [profileError, setProfileError] = useState('');
+  const abortControllerRef = useRef(null);
+  const animationTimerRef = useRef(null);
+  const activeAssistantIdRef = useRef(null);
+  const chatEndRef = useRef(null);
+  const activeConversationIdRef = useRef(chatState.activeConversationId);
+
+  const isGenerating = isLoadingChat || isAnimatingAnswer;
+  const conversations = chatState.conversations;
+  const activeConversation =
+    conversations.find((conversation) => conversation.id === chatState.activeConversationId) ??
+    conversations[0];
+  const messages = activeConversation?.messages ?? [];
+
+  useEffect(() => {
+    activeConversationIdRef.current = chatState.activeConversationId;
+  }, [chatState.activeConversationId]);
+
+  useEffect(() => {
+    window.localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatState));
+  }, [chatState]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -165,16 +258,191 @@ export default function ChatPage() {
     loadProfile();
   }, []);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages, activeView, chatState.activeConversationId]);
+
+  useEffect(() => () => {
+    abortControllerRef.current?.abort();
+    if (animationTimerRef.current) {
+      window.clearInterval(animationTimerRef.current);
+    }
+  }, []);
+
+  function updateConversation(conversationId, updater) {
+    setChatState((currentState) => ({
+      ...currentState,
+      conversations: currentState.conversations.map((conversation) => {
+        if (conversation.id !== conversationId) {
+          return conversation;
+        }
+
+        const updatedConversation = updater(conversation);
+        return {
+          ...updatedConversation,
+          updatedAt: new Date().toISOString(),
+        };
+      }),
+    }));
+  }
+
+  function updateActiveConversation(updater) {
+    const currentConversationId = activeConversationIdRef.current;
+    if (!currentConversationId) {
+      return;
+    }
+    updateConversation(currentConversationId, updater);
+  }
+
+  function finalizeAssistantMessage(messageId, finalAnswer, finalSources) {
+    updateActiveConversation((conversation) => ({
+      ...conversation,
+      messages: conversation.messages.map((message) =>
+        message.id === messageId
+          ? {
+              ...message,
+              answer: finalAnswer,
+              displayedAnswer: finalAnswer,
+              sources: finalSources,
+              isComplete: true,
+            }
+          : message
+      ),
+    }));
+  }
+
+  function animateAssistantAnswer(messageId, finalAnswer, finalSources) {
+    if (animationTimerRef.current) {
+      window.clearInterval(animationTimerRef.current);
+    }
+
+    const answerCharacters = Array.from(finalAnswer);
+    const totalLength = answerCharacters.length;
+    const step = totalLength > 700 ? 18 : totalLength > 320 ? 10 : 5;
+    let cursor = 0;
+
+    setIsAnimatingAnswer(true);
+    activeAssistantIdRef.current = messageId;
+
+    animationTimerRef.current = window.setInterval(() => {
+      cursor = Math.min(cursor + step, totalLength);
+      const partialAnswer = answerCharacters.slice(0, cursor).join('');
+
+      updateActiveConversation((conversation) => ({
+        ...conversation,
+        messages: conversation.messages.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                displayedAnswer: partialAnswer,
+              }
+            : message
+        ),
+      }));
+
+      if (cursor >= totalLength) {
+        window.clearInterval(animationTimerRef.current);
+        animationTimerRef.current = null;
+        finalizeAssistantMessage(messageId, finalAnswer, finalSources);
+        setIsAnimatingAnswer(false);
+        activeAssistantIdRef.current = null;
+      }
+    }, 20);
+  }
+
+  function stopGeneration() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    if (animationTimerRef.current) {
+      window.clearInterval(animationTimerRef.current);
+      animationTimerRef.current = null;
+    }
+
+    const activeAssistantId = activeAssistantIdRef.current;
+    if (activeAssistantId) {
+      updateActiveConversation((conversation) => ({
+        ...conversation,
+        messages: conversation.messages.map((message) =>
+          message.id === activeAssistantId
+            ? {
+                ...message,
+                isComplete: true,
+                displayedAnswer:
+                  message.displayedAnswer || 'Reponse interrompue. Posez une nouvelle question.',
+              }
+            : message
+        ),
+      }));
+    }
+
+    activeAssistantIdRef.current = null;
+    setIsLoadingChat(false);
+    setIsAnimatingAnswer(false);
+  }
+
+  function createNewConversation() {
+    stopGeneration();
+    const nextConversation = createEmptyConversation();
+    setChatError('');
+    setActiveView('response');
+    setIsSidebarOpen(false);
+    setChatState((currentState) => ({
+      conversations: [nextConversation, ...currentState.conversations],
+      activeConversationId: nextConversation.id,
+    }));
+  }
+
+  function selectConversation(conversationId) {
+    if (conversationId === chatState.activeConversationId) {
+      return;
+    }
+
+    stopGeneration();
+    setChatError('');
+    setActiveView('response');
+    setIsSidebarOpen(false);
+    setChatState((currentState) => ({
+      ...currentState,
+      activeConversationId: conversationId,
+    }));
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
     const trimmedQuestion = questionInput.trim();
-    if (!trimmedQuestion) {
+    if (!trimmedQuestion || !activeConversation) {
       return;
     }
 
+    const userMessage = {
+      id: `user-${crypto.randomUUID()}`,
+      role: 'user',
+      content: trimmedQuestion,
+    };
+    const assistantMessage = createAssistantMessage({
+      answer: '',
+      sources: [],
+    });
+
+    const nextTitle =
+      activeConversation.messages.length === 0
+        ? truncateTitle(trimmedQuestion)
+        : activeConversation.title;
+
+    setQuestionInput('');
+    updateActiveConversation((conversation) => ({
+      ...conversation,
+      title: nextTitle,
+      messages: [...conversation.messages, userMessage, assistantMessage],
+    }));
     setIsLoadingChat(true);
     setChatError('');
+    activeAssistantIdRef.current = assistantMessage.id;
+    abortControllerRef.current = new AbortController();
 
     try {
       const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -182,6 +450,7 @@ export default function ChatPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: abortControllerRef.current.signal,
         body: JSON.stringify({
           question: trimmedQuestion,
           mode: activeView,
@@ -199,20 +468,31 @@ export default function ChatPage() {
       }
 
       const data = await response.json();
-      setChatData(data);
-      setLastQuestion(trimmedQuestion);
       setActiveView('response');
-    } catch {
-      setChatError('Le backend ne repond pas pour le moment. Affichage du contenu local.');
-      setChatData(fallbackResponse);
-      setLastQuestion(trimmedQuestion);
-    } finally {
       setIsLoadingChat(false);
+      abortControllerRef.current = null;
+      animateAssistantAnswer(assistantMessage.id, data.answer, data.sources);
+    } catch {
+      const wasAborted = abortControllerRef.current?.signal.aborted;
+      abortControllerRef.current = null;
+      setIsLoadingChat(false);
+      if (wasAborted) {
+        return;
+      }
+
+      setChatError('Le backend ne repond pas pour le moment. Affichage du contenu local.');
+      animateAssistantAnswer(assistantMessage.id, fallbackResponse.answer, fallbackResponse.sources);
     }
   }
 
-  const sourceCards = chatData.sources.map(toSourceCard);
-  const evidenceHighlights = buildEvidenceHighlights(chatData.sources);
+  const sortedConversations = useMemo(
+    () =>
+      [...conversations].sort(
+        (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+      ),
+    [conversations]
+  );
+
   const clerkInitials = [user?.firstName?.[0], user?.lastName?.[0]]
     .filter(Boolean)
     .join('')
@@ -292,143 +572,271 @@ export default function ChatPage() {
 
       <main className="chat-content">
         {activeScreen === 'chat' ? (
-          <section className="chat-thread" aria-label="Historique de conversation">
-            <div className="user-message-row">
-              <article className="user-message">
-                <p>{lastQuestion}</p>
-              </article>
-            </div>
+          <div className="chat-layout">
+            <nav className="chat-sidebar-rail" aria-label="Navigation des discussions">
+              <button
+                className="sidebar-rail-button"
+                type="button"
+                onClick={() => setIsSidebarOpen((currentValue) => !currentValue)}
+                aria-label={isSidebarOpen ? 'Masquer les discussions' : 'Afficher les discussions'}
+              >
+                <span className="material-symbols-outlined">
+                  {isSidebarOpen ? 'left_panel_close' : 'left_panel_open'}
+                </span>
+              </button>
 
-            <div className="assistant-stack">
-              {chatError ? <p className="status-banner warning">{chatError}</p> : null}
+              <button
+                className="sidebar-rail-button"
+                type="button"
+                onClick={createNewConversation}
+                aria-label="Nouvelle discussion"
+              >
+                <span className="material-symbols-outlined">edit_square</span>
+              </button>
+            </nav>
 
-              {activeView === 'response' ? (
-                <>
-                  <article className="assistant-response-card">
-                    <div className="assistant-card-header">
-                      <div className="reliable-badge">
-                        <span className="material-symbols-outlined fill">verified</span>
-                        <span>Fiable</span>
-                      </div>
+            <aside className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`} aria-label="Discussions">
+              <div className="chat-sidebar-header">
+                <div>
+                  <p className="sidebar-kicker">Discussions</p>
+                  <h2>Historique</h2>
+                </div>
 
-                      <button className="copy-button" type="button">
-                        <span className="material-symbols-outlined">content_copy</span>
-                        <span>Copier</span>
-                      </button>
-                    </div>
+                <button className="new-chat-button" type="button" onClick={createNewConversation}>
+                  <span className="material-symbols-outlined">edit_square</span>
+                  <span>Nouvelle</span>
+                </button>
+              </div>
 
-                    <p className="assistant-response-text">{chatData.answer}</p>
+              <div className="conversation-list">
+                {sortedConversations.map((conversation) => {
+                  const previewMessage = conversation.messages.find((message) => message.role === 'user');
 
-                    <div className="tag-list" aria-label="Etiquettes">
-                      {chatData.sources.map((source) => (
-                        <span key={`${source.type}-${source.ref}`} className="topic-tag">
-                          {source.type}
-                        </span>
-                      ))}
-                    </div>
+                  return (
+                    <button
+                      key={conversation.id}
+                      className={`conversation-item ${
+                        conversation.id === chatState.activeConversationId ? 'active' : ''
+                      }`}
+                      type="button"
+                      onClick={() => selectConversation(conversation.id)}
+                    >
+                      <strong>{conversation.title}</strong>
+                      <p>{previewMessage?.content ?? 'Aucun message pour le moment.'}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+
+            <section className={`chat-panel ${isSidebarOpen ? '' : 'expanded'}`}>
+              <section className="chat-thread" aria-label="Historique de conversation">
+                {chatError ? <p className="status-banner warning">{chatError}</p> : null}
+
+                {!messages.length ? (
+                  <article className="empty-chat-state">
+                    <span className="material-symbols-outlined">forum</span>
+                    <h2>Nouvelle discussion</h2>
+                    <p>Posez votre premiere question. Cette discussion restera disponible apres rafraichissement.</p>
                   </article>
+                ) : null}
 
-                  <div className="source-stack">
-                    {sourceCards.map((card) => (
-                      <SourceCard key={card.id} card={card} />
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <section className="proofs-panel" aria-label="Preuves et references">
-                  <article className="proofs-overview-card">
-                    <div className="proofs-overview-head">
-                      <div>
-                        <p className="proofs-kicker">Niveau de preuve</p>
-                        <h2>Sources mobilisees pour justifier la reponse</h2>
-                      </div>
-                      <div className="proofs-score">
-                        <span className="material-symbols-outlined fill">gpp_good</span>
-                        <span>{chatData.sources.length} sources</span>
-                      </div>
-                    </div>
-
-                    <p className="proofs-overview-text">
-                      Cette reponse s&apos;appuie sur les references retournees par le backend
-                      pour justifier le contenu principal et rendre les preuves consultables.
-                    </p>
-
-                    <div className="proofs-highlight-grid">
-                      {evidenceHighlights.map((item) => (
-                        <article key={item.id} className="proof-highlight-card">
-                          <span className="proof-highlight-title">{item.title}</span>
-                          <strong>{item.value}</strong>
-                          <p>{item.detail}</p>
+                {messages.map((message) => {
+                  if (message.role === 'user') {
+                    return (
+                      <div key={message.id} className="user-message-row message-enter">
+                        <article className="user-message">
+                          <p>{message.content}</p>
                         </article>
-                      ))}
-                    </div>
-                  </article>
+                      </div>
+                    );
+                  }
 
-                  <div className="proofs-evidence-list">
-                    {sourceCards.map((card, index) => (
-                      <article key={card.id} className={`proof-item ${card.type}`}>
-                        <div className="proof-step">
-                          <span>{index + 1}</span>
-                        </div>
+                  const sourceCards = message.sources.map(toSourceCard);
+                  const evidenceHighlights = buildEvidenceHighlights(message.sources);
 
-                        <div className="proof-item-content">
-                          <div className="proof-item-header">
-                            <div className="proof-item-source">
-                              <span className="material-symbols-outlined">{card.icon}</span>
+                  return (
+                    <div key={message.id} className="assistant-stack message-enter">
+                      {activeView === 'response' ? (
+                        <>
+                          <article className="assistant-response-card">
+                            <div className="assistant-card-header">
+                              <div className="reliable-badge">
+                                <span className="material-symbols-outlined fill">verified</span>
+                                <span>Fiable</span>
+                              </div>
+
+                              <button
+                                className="copy-button"
+                                type="button"
+                                onClick={() =>
+                                  navigator.clipboard.writeText(message.displayedAnswer || message.answer)
+                                }
+                              >
+                                <span className="material-symbols-outlined">content_copy</span>
+                                <span>Copier</span>
+                              </button>
+                            </div>
+
+                            <p
+                              className={`assistant-response-text ${
+                                message.isComplete ? '' : 'is-streaming'
+                              }`}
+                            >
+                              {message.displayedAnswer}
+                            </p>
+
+                            {message.isComplete && message.sources.length ? (
+                              <div className="tag-list" aria-label="Etiquettes">
+                                {message.sources.map((source) => (
+                                  <span
+                                    key={`${message.id}-${source.type}-${source.ref}`}
+                                    className="topic-tag"
+                                  >
+                                    {source.type}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </article>
+
+                          {message.isComplete && sourceCards.length ? (
+                            <div className="source-stack">
+                              {sourceCards.map((card) => (
+                                <SourceCard key={card.id} card={card} />
+                              ))}
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <section className="proofs-panel" aria-label="Preuves et references">
+                          <article className="proofs-overview-card">
+                            <div className="proofs-overview-head">
                               <div>
-                                <p>{card.source}</p>
-                                <span>{card.reference}</span>
+                                <p className="proofs-kicker">Niveau de preuve</p>
+                                <h2>Sources mobilisees pour justifier la reponse</h2>
+                              </div>
+                              <div className="proofs-score">
+                                <span className="material-symbols-outlined fill">gpp_good</span>
+                                <span>{message.sources.length} sources</span>
                               </div>
                             </div>
 
-                            <span className="proof-chip">
-                              {card.type === 'quran'
-                                ? 'Texte source'
-                                : card.type === 'tafsir'
-                                  ? 'Explication'
-                                  : 'Confirmation'}
-                            </span>
-                          </div>
-
-                          {card.type === 'quran' ? (
-                            <>
-                              <p className="arabic-text proof-arabic" dir="rtl">
-                                {card.title}
-                              </p>
-                              <p className="proof-excerpt">"{card.translation}"</p>
-                            </>
-                          ) : (
-                            <p className={`proof-excerpt ${card.type === 'hadith' ? 'italic' : ''}`}>
-                              "{card.content}"
+                            <p className="proofs-overview-text">
+                              Cette reponse s&apos;appuie sur les references retournees par le backend
+                              pour justifier le contenu principal et rendre les preuves consultables.
                             </p>
-                          )}
+
+                            <div className="proofs-highlight-grid">
+                              {evidenceHighlights.map((item) => (
+                                <article key={item.id} className="proof-highlight-card">
+                                  <span className="proof-highlight-title">{item.title}</span>
+                                  <strong>{item.value}</strong>
+                                  <p>{item.detail}</p>
+                                </article>
+                              ))}
+                            </div>
+                          </article>
+
+                          <div className="proofs-evidence-list">
+                            {sourceCards.map((card, index) => (
+                              <article key={card.id} className={`proof-item ${card.type}`}>
+                                <div className="proof-step">
+                                  <span>{index + 1}</span>
+                                </div>
+
+                                <div className="proof-item-content">
+                                  <div className="proof-item-header">
+                                    <div className="proof-item-source">
+                                      <span className="material-symbols-outlined">{card.icon}</span>
+                                      <div>
+                                        <p>{card.source}</p>
+                                        <span>{card.reference}</span>
+                                      </div>
+                                    </div>
+
+                                    <span className="proof-chip">
+                                      {card.type === 'quran'
+                                        ? 'Texte source'
+                                        : card.type === 'tafsir'
+                                          ? 'Explication'
+                                          : 'Confirmation'}
+                                    </span>
+                                  </div>
+
+                                  {card.type === 'quran' ? (
+                                    <>
+                                      <p className="arabic-text proof-arabic" dir="rtl">
+                                        {card.title}
+                                      </p>
+                                      <p className="proof-excerpt">"{card.translation}"</p>
+                                    </>
+                                  ) : (
+                                    <p
+                                      className={`proof-excerpt ${
+                                        card.type === 'hadith' ? 'italic' : ''
+                                      }`}
+                                    >
+                                      "{card.content}"
+                                    </p>
+                                  )}
+                                </div>
+                              </article>
+                            ))}
+                          </div>
+                        </section>
+                      )}
+
+                      {message.isComplete ? (
+                        <div className="feedback-row" aria-label="Evaluation de la reponse">
+                          <button
+                            className={`feedback-button ${message.feedback === 'up' ? 'selected' : ''}`}
+                            type="button"
+                            onClick={() =>
+                              updateActiveConversation((conversation) => ({
+                                ...conversation,
+                                messages: conversation.messages.map((item) =>
+                                  item.id === message.id ? { ...item, feedback: 'up' } : item
+                                ),
+                              }))
+                            }
+                          >
+                            <span className="material-symbols-outlined">thumb_up</span>
+                            <span>Utile</span>
+                          </button>
+                          <button
+                            className={`feedback-button negative ${
+                              message.feedback === 'down' ? 'selected' : ''
+                            }`}
+                            type="button"
+                            onClick={() =>
+                              updateActiveConversation((conversation) => ({
+                                ...conversation,
+                                messages: conversation.messages.map((item) =>
+                                  item.id === message.id ? { ...item, feedback: 'down' } : item
+                                ),
+                              }))
+                            }
+                          >
+                            <span className="material-symbols-outlined">thumb_down</span>
+                            <span>Imprecis</span>
+                          </button>
                         </div>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-              )}
+                      ) : (
+                        <div className="typing-indicator" aria-label="Assistant en train d'ecrire">
+                          <span className="typing-dot" />
+                          <span className="typing-dot" />
+                          <span className="typing-dot" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
-              <div className="feedback-row" aria-label="Evaluation de la reponse">
-                <button className="feedback-button" type="button">
-                  <span className="material-symbols-outlined">thumb_up</span>
-                  <span>Utile</span>
-                </button>
-                <button className="feedback-button negative" type="button">
-                  <span className="material-symbols-outlined">thumb_down</span>
-                  <span>Imprecis</span>
-                </button>
-              </div>
-            </div>
-
-            {isLoadingChat ? (
-              <div className="typing-indicator" aria-label="Assistant en train d'ecrire">
-                <span className="typing-dot" />
-                <span className="typing-dot" />
-                <span className="typing-dot" />
-              </div>
-            ) : null}
-          </section>
+                <div ref={chatEndRef} />
+              </section>
+            </section>
+          </div>
         ) : (
           <section className="profile-page" aria-label="Profil utilisateur">
             {profileError ? <p className="status-banner warning">{profileError}</p> : null}
@@ -580,12 +988,17 @@ export default function ChatPage() {
               placeholder="Posez votre question..."
               value={questionInput}
               onChange={(event) => setQuestionInput(event.target.value)}
-              disabled={isLoadingChat}
             />
 
-            <button className="send-button" type="submit" aria-label="Envoyer" disabled={isLoadingChat}>
+            <button
+              className={`send-button ${isGenerating ? 'stop' : ''}`}
+              type={isGenerating ? 'button' : 'submit'}
+              aria-label={isGenerating ? 'Interrompre la reponse' : 'Envoyer'}
+              onClick={isGenerating ? stopGeneration : undefined}
+              disabled={!isGenerating && !questionInput.trim()}
+            >
               <span className="material-symbols-outlined send-icon">
-                {isLoadingChat ? 'hourglass_top' : 'arrow_upward'}
+                {isGenerating ? 'stop' : 'arrow_upward'}
               </span>
             </button>
           </form>

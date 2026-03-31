@@ -8,6 +8,8 @@ class SourceItem(BaseModel):
     source: str | None = None
     role: str | None = None
     arabic: str | None = None
+    original_text: str | None = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class UserProfile(BaseModel):

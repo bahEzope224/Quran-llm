@@ -1,7 +1,6 @@
 import json
 import re
 from urllib import error, request
-
 from app.config import settings
 
 
@@ -26,68 +25,64 @@ def _fallback_answer(context_chunks: list[dict[str, str]]) -> str:
 
 
 def _extract_content(payload: dict[str, object]) -> str | None:
-    if settings.llm_provider == "ollama":
-        message = payload.get("message")
-        if not isinstance(message, dict):
-            return None
-        content = message.get("content")
-        return content.strip() if isinstance(content, str) else None
-
+    """Extrait le texte de la réponse selon le format de l'API (OpenAI ou local)."""
+    # Pour OpenAI style chat completions
     choices = payload.get("choices")
-    if not isinstance(choices, list) or not choices:
-        return None
+    if choices and isinstance(choices, list) and len(choices) > 0:
+        first_choice = choices[0]
+        if isinstance(first_choice, dict):
+            message = first_choice.get("message")
+            if isinstance(message, dict):
+                content = message.get("content")
+                return content.strip() if isinstance(content, str) else None
 
-    first_choice = choices[0]
-    if not isinstance(first_choice, dict):
-        return None
+    # Pour un format simple local LLM
+    content = payload.get("content")
+    if isinstance(content, str):
+        return content.strip()
 
-    message = first_choice.get("message")
-    if not isinstance(message, dict):
-        return None
-
-    content = message.get("content")
-    return content.strip() if isinstance(content, str) else None
+    return None
 
 
 def _post_chat(messages: list[dict[str, str]]) -> str | None:
-    if settings.llm_provider != "ollama" and not settings.llm_api_key:
+    """Envoie les messages à un LLM local ou cloud selon settings."""
+    use_local = settings.llm_mode in ("local", "hybrid")
+    use_cloud = settings.llm_mode in ("cloud", "hybrid") and settings.openai_api_key
+
+    if not use_local and not use_cloud:
         return None
 
-    if settings.llm_provider == "ollama":
+    # Priorité: local si activé
+    if use_local:
         payload = {
-            "model": settings.llm_model,
+            "model": settings.local_llm_model,
             "messages": messages,
             "stream": False,
-            "options": {
-                "temperature": settings.llm_temperature,
-            },
+            "options": {"temperature": settings.llm_temperature},
         }
-        headers = {
-            "Content-Type": "application/json",
-        }
+        headers = {"Content-Type": "application/json"}
+        url = settings.local_llm_base_url
     else:
         payload = {
-            "model": settings.llm_model,
+            "model": settings.cloud_llm_model,
             "temperature": settings.llm_temperature,
             "messages": messages,
         }
         headers = {
-            "Authorization": f"Bearer {settings.llm_api_key}",
+            "Authorization": f"Bearer {settings.openai_api_key}",
             "Content-Type": "application/json",
         }
+        url = "https://api.openai.com/v1/chat/completions"
 
     http_request = request.Request(
-        settings.llm_base_url,
+        url,
         data=json.dumps(payload).encode("utf-8"),
         headers=headers,
         method="POST",
     )
 
     try:
-        with request.urlopen(
-            http_request,
-            timeout=settings.llm_timeout_seconds,
-        ) as response:
+        with request.urlopen(http_request, timeout=settings.llm_timeout_seconds) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
     except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError):
         return None
@@ -150,8 +145,11 @@ def _clean_translated_text(text: str) -> str:
 
 
 def generate_answer(prompt: str, context_chunks: list[dict[str, str]]) -> dict[str, object]:
-    """Genere une reponse via Ollama local ou une API compatible OpenAI."""
-    if settings.llm_provider != "ollama" and not settings.llm_api_key:
+    """Genere une reponse via LLM local ou cloud selon settings."""
+    use_local = settings.llm_mode in ("local", "hybrid")
+    use_cloud = settings.llm_mode in ("cloud", "hybrid") and settings.openai_api_key
+
+    if not use_local and not use_cloud:
         return {"answer": _fallback_answer(context_chunks)}
 
     messages = [
@@ -166,11 +164,9 @@ def generate_answer(prompt: str, context_chunks: list[dict[str, str]]) -> dict[s
                 "Si tu recopies un passage arabe, recopie-le exactement, sans le modifier."
             ),
         },
-        {
-            "role": "user",
-            "content": prompt,
-        },
+        {"role": "user", "content": prompt},
     ]
+
     answer = _post_chat(messages)
     if not answer:
         return {"answer": _fallback_answer(context_chunks)}
@@ -179,7 +175,7 @@ def generate_answer(prompt: str, context_chunks: list[dict[str, str]]) -> dict[s
 
 
 def translate_text_to_french(text: str) -> str:
-    """Traduit un texte anglais en francais et laisse l'arabe intact."""
+    """Traduit un texte anglais en francais tout en laissant l'arabe intact."""
     if not text or not _looks_english(text):
         return text
 
@@ -199,10 +195,8 @@ def translate_text_to_french(text: str) -> str:
                     "Si une portion est en arabe, recopie-la exactement sans alteration."
                 ),
             },
-            {
-                "role": "user",
-                "content": source_text,
-            },
+            {"role": "user", "content": source_text},
         ]
     )
+
     return _clean_translated_text(translated) if translated else source_text

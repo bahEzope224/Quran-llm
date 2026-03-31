@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
+load_dotenv(override=True)   # ← Ajoute cette ligne ici
 from app.config import settings
 from app.routes.auth import router as auth_router
 from app.routes.chat import router as chat_router

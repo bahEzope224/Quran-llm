@@ -2,8 +2,10 @@ import re
 import unicodedata
 
 from app.models.schemas import ChatRequest, ChatResponse, SourceItem
-from app.services.llm import generate_answer, translate_text_to_french
+from app.services.llm.llm import generate_answer, translate_text_to_french
 from app.services.retriever import retrieve_relevant_chunks
+from app.services.llm.local import generate as local_generate
+from app.services.llm.cloud import generate as cloud_generate
 
 SOURCE_PRIORITY = ["quran", "hadith", "tafsir"]
 QUESTION_TOPIC_MAP = {
@@ -229,25 +231,53 @@ def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]
 
 
 def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
-    """Pipeline RAG: retrieval, construction du prompt, generation."""
+    """Pipeline RAG: retrieval, filtrage, rule-based, puis generation HYBRID."""
+    
+    # 1. Retrieval
     chunks = retrieve_relevant_chunks(query=payload.question, top_k=5)
     chunks = _filter_chunks_for_topic(payload=payload, chunks=chunks)[:3]
+
     if not chunks:
         return ChatResponse(
             answer="Je n'ai pas de preuve explicite dans le Coran, les hadiths ou le tafsir pour cette question.",
             sources=[],
+            model_used="none"
         )
 
+    # 2. Localisation (traduction FR si besoin)
     localized_chunks = _localize_chunks(chunks)
+
+    # 3. Rule-based (prioritaire)
     direct_answer = _build_rule_based_answer(payload=payload, chunks=localized_chunks)
     if direct_answer:
-        answer = direct_answer
-    else:
-        prompt = build_rag_prompt(payload=payload, chunks=localized_chunks)
-        generated = generate_answer(prompt=prompt, context_chunks=chunks)
-        answer = generated["answer"]
+        return ChatResponse(
+            answer=direct_answer,
+            sources=_build_sources_from_chunks(localized_chunks),
+            model_used="rule-based"
+        )
 
+    # 4. Construction prompt
+    prompt = build_rag_prompt(payload=payload, chunks=localized_chunks)
+
+    # 5. Routing HYBRID
+    from app.services.llm.router import route
+    model_type = route(payload.question)
+
+    # 6. Génération avec fallback sécurisé
+    try:
+        if model_type == "local":
+            answer = local_generate(prompt=prompt)
+        else:
+            answer = cloud_generate(prompt=prompt)
+
+    except Exception:
+        # fallback automatique cloud si erreur local
+        answer = cloud_generate(prompt=prompt)
+        model_type = "cloud_fallback"
+
+    # 7. Réponse finale
     return ChatResponse(
         answer=answer,
         sources=_build_sources_from_chunks(localized_chunks),
+        model_used=model_type
     )

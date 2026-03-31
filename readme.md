@@ -71,9 +71,9 @@ Quran-LLM/
 │   └── ...
 │
 └── README.md
+```
 
 
----
 
 ## 🛠️ Installation
 

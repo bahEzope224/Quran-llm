@@ -143,14 +143,6 @@ Ce projet est distribué sous licence **MIT**. Voir le fichier [LICENSE](LICENSE
 
 ---
 
-## 🙏 Remerciements
-
-- À la communauté musulmane pour son soutien et ses retours
-- Aux contributeurs open-source des outils RAG et des modèles d'embeddings
-- À tous ceux qui œuvrent pour rendre la connaissance du Coran plus accessible grâce à l'IA
-
----
-
 <div align="center">
 
 Made with ❤️ 

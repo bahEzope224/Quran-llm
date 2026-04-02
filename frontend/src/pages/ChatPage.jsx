@@ -193,13 +193,22 @@ export default function ChatPage() {
       return;
     }
 
-    // Sinon, on envoie au backend
+    // Sinon, on cherche la question utilisateur dans l'historique des messages
+    const currentMessageIndex = messages.findIndex((m) => m.id === message.id);
+    const userMessage = messages
+      .slice(0, Math.max(0, currentMessageIndex))
+      .reverse()
+      .find((m) => m.role === 'user');
+
+    const question = userMessage ? userMessage.content : "Question inconnue";
+
+    // Envoi au backend
     try {
       const response = await fetch(`${API_BASE_URL}/chat/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: message.question || "Question initiale",
+          question: question,
           answer: message.answer || message.displayedAnswer,
           feedback: type,
           comment: comment,
@@ -419,53 +428,6 @@ export default function ChatPage() {
       ...currentState,
       activeConversationId: conversationId,
     }));
-  }
-
-  async function handleFeedbackSubmit(messageId, feedbackType) {
-    const currentMessageIndex = messages.findIndex((m) => m.id === messageId);
-    if (currentMessageIndex === -1) {
-      return;
-    }
-
-    const assistantMessage = messages[currentMessageIndex];
-    const userMessage = messages
-      .slice(0, currentMessageIndex)
-      .reverse()
-      .find((m) => m.role === 'user');
-
-    if (!userMessage) {
-      return;
-    }
-
-    updateActiveConversation((conversation) => ({
-      ...conversation,
-      messages: conversation.messages.map((item) =>
-        item.id === messageId ? { ...item, feedback: feedbackType } : item
-      ),
-    }));
-
-    try {
-      await fetch(`${API_BASE_URL}/chat/feedback`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: userMessage.content,
-          answer: assistantMessage.answer,
-          sources: assistantMessage.sources,
-          feedback: feedbackType,
-          profile: {
-            legal_school: profile.legal_school,
-            language: profile.language,
-            mode: profile.mode,
-            notifications_enabled: profile.notifications_enabled,
-          },
-        }),
-      });
-    } catch (error) {
-      console.error('Feedback submission failed:', error);
-    }
   }
 
   async function handleSubmit(event) {

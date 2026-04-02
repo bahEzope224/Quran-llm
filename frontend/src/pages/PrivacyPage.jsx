@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       </section>
 
       <footer style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid #1e293b', textAlign: 'center' }}>
-        <a href="/" style={{ color: '#10b981', textDecoration: 'none' }}>Retour à l'accueil</a>
+        <a href="/landing" style={{ color: '#10b981', textDecoration: 'none' }}>Retour à l'accueil</a>
       </footer>
     </main>
   );

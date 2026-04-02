@@ -5,6 +5,7 @@ import {
 } from '@clerk/react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import ChatPage from './pages/ChatPage.jsx';
+import LandingPage from './pages/LandingPage.jsx';
 
 function AuthPage({ mode }) {
   const isSignIn = mode === 'sign-in';
@@ -55,6 +56,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<ProtectedHome />} />
+        <Route path="/landing" element={<LandingPage />} />
         <Route
           path="/sign-in"
           element={

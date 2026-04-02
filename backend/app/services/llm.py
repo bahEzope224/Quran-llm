@@ -218,7 +218,8 @@ def generate_answer(prompt: str, context_chunks: list[dict], options: dict | Non
                 "2. PRÉCISION DOCTRINALE : Ne transforme JAMAIS un raisonnement conditionnel en affirmation (ex: 'Si... alors' n'est pas 'Il faut...').\n"
                 "3. FRÉQUENCES : Sois exact sur les obligations (ex: Hajj = UNE SEULE FOIS dans la vie si capable).\n"
                 "4. TRADUCTION DE HAUTE QUALITÉ : Traduis fidèlement les sources anglaises en français soigné, en respectant le sens théologique.\n"
-                "5. TEXTES ARABES : Recopie l'arabe à l'identique, sans JAMAIS le modifier."
+                "5. TEXTES ARABES : Recopie l'arabe à l'identique, sans JAMAIS le modifier.\n"
+                "6. NOM DU PROPHÈTE : N'utilise JAMAIS le nom 'Mahomet'. Utilise TOUJOURS 'Muhammad PBSL' (Paix et Bénédiction de Dieu sur Lui)."
             ),
         },
         {

@@ -31,7 +31,7 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
         http_request = request.Request(
             settings.embeddings_base_url,
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", **auth_header},
+            headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", **auth_header},
             method="POST",
         )
 

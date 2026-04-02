@@ -67,7 +67,7 @@ def _post_chat(messages: list[dict[str, str]], temperature: float | None = None,
             },
         }
         headers = {
-            "Content-Type": "application/json",
+            "Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
     else:
         # Format OpenAI/Groq compatible
@@ -78,7 +78,7 @@ def _post_chat(messages: list[dict[str, str]], temperature: float | None = None,
             "stream": False
         }
         headers = {
-            "Content-Type": "application/json",
+            "Content-Type": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
         if settings.llm_api_key:
             headers["Authorization"] = f"Bearer {settings.llm_api_key}"

@@ -252,11 +252,11 @@ def translate_text_to_french(text: str, force: bool = False) -> str:
         f"Translate: {source_text}"
     )
 
-    # Augmenter le timeout pour la traduction locale qui peut etre lente
+    # Utiliser le modele de traduction dedie (plus leger/rapide)
     translated = _post_chat(
         [{"role": "user", "content": prompt}],
         temperature=0.0,
-        model=settings.llm_model
+        model=settings.llm_translation_model
     )
     
     if translated:

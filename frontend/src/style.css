@@ -145,6 +145,15 @@ a {
   color: var(--text);
 }
 
+.chat-input-disclaimer {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  opacity: 0.8;
+  width: 100%;
+}
+
 .auth-page {
   min-height: 100vh;
   padding: 32px 16px;

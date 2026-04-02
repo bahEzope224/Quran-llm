@@ -6,6 +6,7 @@ import {
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import ChatPage from './pages/ChatPage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
+import PrivacyPage from './pages/PrivacyPage.jsx';
 
 function AuthPage({ mode }) {
   const isSignIn = mode === 'sign-in';
@@ -57,6 +58,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<ProtectedHome />} />
         <Route path="/landing" element={<LandingPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
         <Route
           path="/sign-in"
           element={

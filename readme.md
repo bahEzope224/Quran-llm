@@ -1,9 +1,27 @@
 
 
 
+
 <div align="center">
 
 # 📖 Quran-LLM
+
+## 🏛️ Éthique & Conformité religieuse
+
+**Quran-LLM** est un outil de recherche assistée. Il ne remplace jamais l'avis d'une autorité religieuse (Savant, Moufti).
+
+### 📖 Sources de données
+- **Coran** : Texte sacré via Tanzil.net (domaine public).
+- **Hadiths** : Sahih al-Bukhari & Muslim via Sunnah.com (usage non-commercial).
+- **Tafsir** : Ibn Kathir (Arabe/Anglais) via Qul/Tarteel (domaine public).
+- **Fatwas** : IslamQA via indexation (citation explicite maintenue).
+
+### ⚠️ Avertissement légal
+> [!IMPORTANT]
+> **Ceci n'est pas une fatwa**. Les réponses sont générées par IA et doivent être vérifiées par des sources authentiques. L'équipe Quran-LLM décline toute responsabilité quant à l'interprétation des résultats hors du cadre consultatif.
+
+## 🔒 Confidentialité & RGPD
+Nous respectons votre vie privée. Les discussions sont collectées de façon **anonyme** pour l'amélioration continue du modèle. Consultez notre [Politique de Confidentialité](./PRIVACY.md).
 
 **Un assistant intelligent basé sur l'IA pour explorer le Saint Coran et les Hadiths**
 

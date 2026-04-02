@@ -535,56 +535,48 @@ export default function ChatPage() {
   return (
     <div className="ilm-chat-page">
       <header className="top-app-bar">
-        <div className="brand-row">
-          <button 
-            className="mobile-menu-btn" 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            aria-label="Menu"
-          >
-            <span className="material-symbols-outlined">menu</span>
-          </button>
-          
-          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img src="/logo.svg" alt="ʿIlm Logo" className="brand-logo" />
-            <span className="brand-title">ILM AI</span>
-          </Link>
+        <div className="top-bar-left">
+          <div className="brand-row">
+            <button 
+              className="mobile-menu-btn" 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              aria-label="Menu"
+            >
+              <span className="material-symbols-outlined">menu</span>
+            </button>
+            
+            <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <img src="/logo.svg" alt="ʿIlm Logo" className="brand-logo" />
+              <span className="brand-title">ILM AI</span>
+            </Link>
+          </div>
         </div>
 
-        <div className="top-bar-actions">
-          <div className="page-actions">
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Nouvelle discussion"
-              onClick={() => {
-                createNewConversation();
-                setActiveScreen('chat');
-              }}
-            >
-              <span className="material-symbols-outlined">edit_square</span>
-            </button>
+        <div className="top-bar-center">
+          {activeScreen === 'chat' ? (
+            <div className="view-toggle" aria-label="Changer de mode de reponse">
+              <button
+                className={`toggle-pill ${activeView === 'response' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setActiveView('response')}
+              >
+                Reponse
+              </button>
+              <button
+                className={`toggle-pill ${activeView === 'proofs' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setActiveView('proofs')}
+              >
+                Preuves
+              </button>
+            </div>
+          ) : (
+            <span className="profile-header-label">Mon profil</span>
+          )}
+        </div>
 
-            {activeScreen === 'chat' ? (
-              <div className="view-toggle" aria-label="Changer de mode de reponse">
-                <button
-                  className={`toggle-pill ${activeView === 'response' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setActiveView('response')}
-                >
-                  Reponse
-                </button>
-                <button
-                  className={`toggle-pill ${activeView === 'proofs' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setActiveView('proofs')}
-                >
-                  Preuves
-                </button>
-              </div>
-            ) : (
-              <span className="profile-header-label">Mon profil</span>
-            )}
-
+        <div className="top-bar-right">
+          <div className="top-bar-actions">
             <button
               className={`icon-button profile-button ${activeScreen === 'profile' ? 'active' : ''}`}
               type="button"
@@ -599,22 +591,16 @@ export default function ChatPage() {
                 {activeScreen === 'profile' ? 'chat_bubble' : 'person'}
               </span>
             </button>
-          </div>
 
-          <div className="session-actions">
-            <Show when="signed-out">
-              <SignInButton mode="modal">
-                <button className="auth-ghost-button header-auth-button" type="button">
-                  Connexion
-                </button>
-              </SignInButton>
-
-              <SignUpButton mode="modal">
-                <button className="auth-solid-button header-auth-button" type="button">
-                  Inscription
-                </button>
-              </SignUpButton>
-            </Show>
+            <div className="session-actions">
+              <Show when="signed-out">
+                <SignInButton mode="modal">
+                  <button className="auth-ghost-button header-auth-button" type="button">
+                    Connexion
+                  </button>
+                </SignInButton>
+              </Show>
+            </div>
           </div>
         </div>
       </header>
@@ -627,12 +613,13 @@ export default function ChatPage() {
       <main className="chat-main-container">
         {activeScreen === 'chat' ? (
           <div className={`chat-layout ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
-            <nav className="chat-sidebar-rail" aria-label="Navigation des discussions">
+            {/* Rail d'icones lateral */}
+            <nav className="chat-sidebar-rail" aria-label="Rail de navigation">
               <button
                 className="sidebar-rail-button"
                 type="button"
                 onClick={() => setIsSidebarOpen((currentValue) => !currentValue)}
-                aria-label={isSidebarOpen ? 'Masquer les discussions' : 'Afficher les discussions'}
+                aria-label={isSidebarOpen ? 'Masquer historique' : 'Afficher historique'}
               >
                 <span className="material-symbols-outlined">
                   {isSidebarOpen ? 'left_panel_close' : 'left_panel_open'}
@@ -645,20 +632,21 @@ export default function ChatPage() {
                 onClick={createNewConversation}
                 aria-label="Nouvelle discussion"
               >
-                <span className="material-symbols-outlined">edit_square</span>
+                <span className="material-symbols-outlined">edit</span>
               </button>
             </nav>
 
-            <aside className={`chat-sidebar ${isSidebarOpen ? 'open' : 'closed'}`} aria-label="Discussions">
+            {/* Carte Historique (Style Photo 2) */}
+            <nav className={`chat-sidebar ${!isSidebarOpen ? 'closed' : ''}`} aria-label="Historique des discussions">
               <div className="chat-sidebar-header">
-                <div>
-                  <p className="sidebar-kicker">Discussions</p>
-                  <h2>Historique</h2>
-                </div>
-
-                <button className="new-chat-button" type="button" onClick={createNewConversation}>
-                  <span className="material-symbols-outlined">edit_square</span>
-                  <span>Nouvelle</span>
+                <p className="sidebar-kicker">DISCUSSIONS</p>
+                <h2>Historique</h2>
+                <button 
+                  className="new-chat-btn-sidebar"
+                  onClick={createNewConversation}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>add</span>
+                  NOUVELLE
                 </button>
               </div>
 
@@ -681,7 +669,7 @@ export default function ChatPage() {
                   );
                 })}
               </div>
-            </aside>
+            </nav>
 
             <section className={`chat-panel ${isSidebarOpen ? '' : 'expanded'}`}>
               <section className="chat-thread" aria-label="Historique de conversation">
@@ -902,26 +890,7 @@ export default function ChatPage() {
                         </section>
                       )}
 
-                      {message.isComplete ? (
-                        <div className="feedback-row" aria-label="Evaluation de la reponse">
-                          <button
-                            className={`feedback-button ${message.feedback === 'up' ? 'selected' : ''}`}
-                            type="button"
-                            onClick={() => handleFeedbackSubmit(message.id, 'up')}
-                          >
-                            <span className="material-symbols-outlined">thumb_up</span>
-                            <span>Utile</span>
-                          </button>
-                          <button
-                            className={`feedback-button negative ${message.feedback === 'down' ? 'selected' : ''}`}
-                            type="button"
-                            onClick={() => handleFeedbackSubmit(message.id, 'down')}
-                          >
-                            <span className="material-symbols-outlined">thumb_down</span>
-                            <span>Imprecis</span>
-                          </button>
-                        </div>
-                      ) : (
+                      {!message.isComplete && (
                         <div className="typing-indicator" aria-label="Assistant en train d'ecrire">
                           <span className="typing-dot" />
                           <span className="typing-dot" />

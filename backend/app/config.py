@@ -7,10 +7,12 @@ class Settings(BaseModel):
     app_name: str = "ILM AI"
     app_version: str = "0.1.0"
     app_description: str = "Backend FastAPI pour l'application ILM AI."
-    frontend_origins: list[str] = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ]
+    frontend_origins: list[str] = Field(
+        default_factory=lambda: os.getenv(
+            "FRONTEND_ORIGINS",
+            "http://localhost:5173,http://127.0.0.1:5173,https://quran-llm.vercel.app",
+        ).split(",")
+    )
     default_language: str = "fr"
     default_mode: str = "clair"
     llm_provider: str = Field(

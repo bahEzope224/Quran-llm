@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 
@@ -13,6 +14,7 @@ HADITH_COLLECTION_FILES = [
     "Sunan Ibn Majah.json",
     "Sunan an-Nasa'i.json",
 ]
+ISLAMQA_FATWAS_JSON = DATA_DIR / "islamqa_fatwas.json"
 
 
 def list_available_datasets() -> list[str]:
@@ -29,9 +31,28 @@ def load_tanzil_quran_dataset() -> dict:
 
 
 def get_quran_verses() -> list[dict]:
-    """Retourne la liste des versets si le dataset Tanzil est disponible."""
+    """Retourne la liste des versets enrichis de leur traduction anglaise si disponible."""
     dataset = load_tanzil_quran_dataset()
-    return dataset.get("verses", []) if dataset else []
+    verses = dataset.get("verses", []) if dataset else []
+    
+    # Tentative d'enrichissement avec la traduction anglaise du Tafsir
+    tafsir_data = load_ibn_kathir_tafsir_dataset()
+    if tafsir_data:
+        for verse in verses:
+            ref = verse.get("ref")
+            if ref in tafsir_data:
+                html_content = tafsir_data[ref].get("text", "")
+                # Extraction simple du texte entre balises translation ou premier paragraphe
+                match = re.search(r'<p class="en translation"[^>]*>(.*?)</p>', html_content, re.DOTALL)
+                if match:
+                    verse["translation"] = re.sub(r'<[^>]+>', '', match.group(1)).strip()
+                else:
+                    # Fallback : premier paragraphe clean
+                    first_p = re.search(r'<p[^>]*>(.*?)</p>', html_content, re.DOTALL)
+                    if first_p:
+                        verse["translation"] = re.sub(r'<[^>]+>', '', first_p.group(1)).strip()[:300]
+    
+    return verses
 
 
 def load_ibn_kathir_tafsir_dataset() -> dict[str, dict]:
@@ -56,3 +77,11 @@ def load_hadith_datasets() -> list[dict]:
             records.extend(payload)
 
     return records
+
+
+def load_islamqa_dataset() -> list[dict]:
+    """Charge le dataset des fatwas IslamQA scrapées."""
+    if not ISLAMQA_FATWAS_JSON.exists():
+        return []
+
+    return json.loads(ISLAMQA_FATWAS_JSON.read_text(encoding="utf-8"))

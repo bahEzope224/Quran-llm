@@ -5,6 +5,7 @@ from app.db.datasets_loader import (
     get_quran_verses,
     load_hadith_datasets,
     load_ibn_kathir_tafsir_dataset,
+    load_islamqa_dataset,
 )
 
 
@@ -120,6 +121,8 @@ QUERY_EXPANSIONS = {
     "pillars": {"pilier", "piliers", "five"},
     "music": {"musical", "instruments", "song", "singing", "instrument"},
     "musical": {"music", "instruments", "instrument"},
+    "assia": {"asiya", "pharaon", "pharaoh", "wife"},
+    "asiya": {"assia", "pharaon", "pharaoh", "wife"},
 }
 
 QUERY_PHRASE_EXPANSIONS = {
@@ -399,7 +402,8 @@ def _search_quran_verses(query: str, top_k: int) -> list[dict[str, str]]:
 
     matches = []
     for verse in verses:
-        searchable_text = f"{verse['text']} {verse['ref']}"
+        translation = verse.get("translation", "")
+        searchable_text = f"{verse['ref']} {verse['text']} {translation}"
         score = _score_text_match(features, searchable_text, "quran")
         score += priority_ref_weights.get(verse["ref"], 0)
         if score > 0:
@@ -562,6 +566,52 @@ def _search_hadith_entries(query: str, top_k: int) -> list[dict[str, str]]:
     ]
 
 
+def _search_fatwa_entries(query: str, top_k: int) -> list[dict[str, str]]:
+    dataset = load_islamqa_dataset()
+    if not dataset:
+        return []
+
+    features = _build_query_features(query)
+    if not features["tokens"]:
+        return []
+
+    matches = []
+    for item in dataset:
+        searchable_text = f"{item['title']} {item['question']} {item['content']}"
+        score = _score_text_match(features, searchable_text, "fatwa")
+        if score > 0:
+            matches.append(
+                {
+                    "type": "fatwa",
+                    "source": item["source"],
+                    "ref": f"IslamQA {item['id']}",
+                    "content": item["content"][:1800],
+                    "url": item.get("url"),
+                    "tags": _infer_tags(
+                        ref=item["id"],
+                        source=item["source"],
+                        content=item["title"] + " " + item["question"],
+                        source_type="fatwa",
+                    ),
+                    "score": score,
+                }
+            )
+
+    matches.sort(key=lambda item: item["score"], reverse=True)
+    return [
+        {
+            "type": item["type"],
+            "source": item["source"],
+            "ref": item["ref"],
+            "content": item["content"],
+            "url": item.get("url"),
+            "tags": item["tags"],
+            "lexical_score": item["score"],
+        }
+        for item in matches[:top_k]
+    ]
+
+
 def search_similar_chunks(
     query: str,
     embedding: list[float] | None,
@@ -571,9 +621,10 @@ def search_similar_chunks(
     quran_matches = _search_quran_verses(query=query, top_k=top_k)
     tafsir_matches = _search_tafsir_entries(query=query, top_k=top_k)
     hadith_matches = _search_hadith_entries(query=query, top_k=top_k)
+    fatwa_matches = _search_fatwa_entries(query=query, top_k=top_k)
     _ = query, embedding
     dynamic_chunks = []
-    source_lists = [quran_matches, hadith_matches, tafsir_matches]
+    source_lists = [quran_matches, hadith_matches, tafsir_matches, fatwa_matches]
     source_index = 0
 
     while len(dynamic_chunks) < top_k and any(source_lists):

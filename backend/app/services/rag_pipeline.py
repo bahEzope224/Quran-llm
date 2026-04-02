@@ -10,7 +10,7 @@ from app.services.llm import (
 )
 from app.services.retriever import retrieve_relevant_chunks
 
-SOURCE_PRIORITY = ["quran", "hadith", "tafsir"]
+SOURCE_PRIORITY = ["quran", "hadith", "tafsir", "fatwa"]
 QUESTION_TOPIC_MAP = {
     "prayer": ["priere", "prayer", "salat", "salah", "salata", "assalata", "salawat", "recueillement"],
     "fasting": ["jeune", "fast", "fasting", "siyam", "sawm", "ramadan"],
@@ -31,6 +31,8 @@ KEYWORD_TRANSLATION_MAP = {
     "obligatoire": "mandatory obligatory required",
     "halal": "permissible allowed",
     "haram": "forbidden prohibited",
+    "assia": "asiya pharaoh wife",
+    "asiya": "assia pharaoh wife",
 }
 RELEVANCE_THRESHOLD = 0.30  # Plus souple pour all-minilm
 SEMANTIC_TRUST_THRESHOLD = 0.60 # Score pour bypasser le pruning
@@ -310,8 +312,9 @@ def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]
         "quran": "Texte source coranique retourne par le retriever.",
         "tafsir": "Explication savante retournee par le retriever.",
         "hadith": "Hadith retourne par le retriever.",
+        "fatwa": "Avis jurisprudentiel (Fatwa) d'IslamQA utilise comme clarification pratique.",
     }
-    type_priority = {"quran": 0, "hadith": 1, "tafsir": 2}
+    type_priority = {"quran": 0, "hadith": 1, "tafsir": 2, "fatwa": 3}
     ordered_chunks = sorted(chunks, key=lambda chunk: type_priority.get(chunk["type"], 9))
     return [
         SourceItem(
@@ -322,6 +325,7 @@ def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]
             arabic=chunk.get("arabic"),
             original_text=chunk.get("original_content"),
             tags=chunk.get("tags", []),
+            url=chunk.get("url"), # Ajout de l'URL pour les Fatwas
             role=role_by_type.get(chunk["type"], "Source retournee par le retriever."),
         )
         for chunk in ordered_chunks
@@ -343,6 +347,13 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     if extra_keywords:
         english_query = f"{english_query} {' '.join(extra_keywords)}"
     
+    # --- DEBUT CHIRURGIE LEXICALE (Anti-Confusion Assia/Aicha) ---
+    if "assia" in lower_question or "asiya" in lower_question:
+        # Si on cherche Assia, on INTERDIT Aisha (pollution lexicale detectee)
+        english_query = re.sub(r"\baisha\b", "", english_query, flags=re.IGNORECASE)
+        english_query = f"{english_query} pharaoh asiya quran"
+    # --- FIN CHIRURGIE LEXICALE ---
+
     print(f"DEBUG: Original (FR): {payload.question} -> Enhanced (EN): {english_query}")
 
     # 2. Retrieval avec la question en anglais (top_k=8 pour plus de variete)
@@ -367,7 +378,25 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     
     # 5. Filtrage thématique (TOP 3 initial)
     initial_top_chunks = _filter_chunks_for_topic(payload=payload, chunks=pruned_chunks)[:3]
+
+    # 5b. Evaluation de la force des sources scripturaires (Coran/Hadith)
+    has_strong_scripture = any(
+        c["type"] in ["quran", "hadith"] and c.get("semantic_score", 0) > 0.4
+        for c in initial_top_chunks
+    )
     
+    if not has_strong_scripture:
+        from app.db.vector_store import _search_fatwa_entries
+        print("DEBUG: Fallback to Fatwa search (Scriptural scores too low)")
+        fatwa_matches = _search_fatwa_entries(query=english_query, top_k=2)
+        if fatwa_matches:
+            # On preserve les sources scripturaires (Quran/Hadith) deja trouvees meme si faibles
+            scriptures = [c for c in initial_top_chunks if c["type"] in ["quran", "hadith"]]
+            # On complete avec les fatwas pour arriver a 3
+            initial_top_chunks = (scriptures + fatwa_matches)[:3]
+            # On retrie pour la forme
+            initial_top_chunks = _sort_chunks_by_priority(initial_top_chunks)
+
     # 6. Couplage Automatique Verset -> Tafsir (Enrichissement)
     final_display_chunks = []
     from app.services.retriever import retrieve_tafsir_by_ref

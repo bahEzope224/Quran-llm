@@ -2,10 +2,11 @@ from pydantic import BaseModel, Field
 
 
 class SourceItem(BaseModel):
-    type: str = Field(..., examples=["quran", "tafsir", "hadith"])
+    type: str = Field(..., examples=["quran", "tafsir", "hadith", "fatwa"])
     ref: str
     text: str
     source: str | None = None
+    url: str | None = None
     role: str | None = None
     arabic: str | None = None
     original_text: str | None = None

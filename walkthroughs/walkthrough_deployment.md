@@ -24,7 +24,7 @@ L'application est maintenant entièrement préparée pour quitter votre Mac et �
 2. Liez votre repo Git (sous-dossier `/backend`).
 3. Ajoutez les variables d'environnement (voir `backend/.env.example`) :
    - `LLM_PROVIDER=openai`
-   - `LLM_API_KEY=votre_cle_groq`
+   - `LLM_API_KEY=gsk_votre_cle_groq_ici`
    - `LLM_BASE_URL=https://api.groq.com/openai/v1/chat/completions`
 
 ### Étape 2 : Le Frontend (Sur Vercel)

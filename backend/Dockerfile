@@ -27,4 +27,5 @@ COPY . .
 EXPOSE 8000
 
 # Utiliser Gunicorn pour la production (avec workers Uvicorn)
-CMD ["gunicorn", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", "--bind", "0.0.0.0:8000", "--timeout", "120"]
+# Le port est injecte dynamiquement par Railway via la variable $PORT
+CMD ["sh", "-c", "gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:${PORT:-8000} --timeout 120"]

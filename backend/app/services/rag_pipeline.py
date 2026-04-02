@@ -17,6 +17,7 @@ QUESTION_TOPIC_MAP = {
     "interest": ["interet", "interets", "interest", "usury", "riba"],
     "pillars": ["pilier", "piliers", "pillar", "pillars", "cinq piliers", "five pillars"],
     "music": ["musique", "music", "musical", "instrument", "instruments", "song", "singing"],
+    "general": ["islam", "musulman", "muslim", "religion", "dieu", "allah", "prophete", "prophet", "coran", "quran", "hadith", "sunnah", "foi", "faith", "iman", "ihsan", "priere", "hajj", "zakat", "jeune", "fasting", "halal", "haram"],
 }
 
 # Map pour hybridation de la recherche (FR -> EN)
@@ -136,6 +137,27 @@ def _detect_intent(question: str) -> str | None:
     if any(term in question for term in ("quels", "quelles", "liste", "list", "what are", "what is", "decrire", "describe")):
         return "definition"
     return None
+
+
+def _is_off_topic(question: str) -> bool:
+    """Verifie si la question est manifestement etrangere au domaine islamique."""
+    # Si on detecte un topic ou un intent connu, ce n'est pas off-topic
+    if _detect_topic(question) or _detect_intent(question):
+        return False
+        
+    # Liste de mots-cles "Alerte Hors-Sujet"
+    off_topic_indicators = [
+        "capital", "capitale", "president", "meteo", "cuisine", "football", "sport", 
+        "politique", "bourse", "cinema", "film", "chanson", "voiture", "habitants"
+    ]
+    
+    # Si on a des indicateurs hors-sujet SANS aucun mot-cle islamique, c'est off-topic
+    islamic_keywords = ["islam", "religion", "dieu", "allah", "prophete", "coran", "hadith", "sunnah", "foi"]
+    normalized_q = question.lower()
+    has_off_topic_words = any(word in normalized_q for word in off_topic_indicators)
+    has_islamic_words = any(word in normalized_q for word in islamic_keywords)
+    
+    return has_off_topic_words and not has_islamic_words
 
 
 def _chunk_matches_topic(chunk: dict[str, str], topic: str) -> bool:
@@ -334,7 +356,15 @@ def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]
 
 def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     """Pipeline RAG Ameliore: Traduction EN, Retrieval Hybride, Generation FR."""
-    # 1. Traduction de la question (avec Hybridation par mots-cles)
+    # 1. Verification Hors-Sujet
+    normalized_q = _normalize_question(payload.question)
+    if _is_off_topic(normalized_q):
+        return ChatResponse(
+            answer="Je suis ILM AI, une intelligence assistante spécialisée sur l'Islam. Veuillez poser des questions en lien avec la foi, la pratique ou l'histoire islamique.",
+            sources=[],
+        )
+
+    # 2. Traduction de la question (avec Hybridation par mots-cles)
     english_query = translate_french_to_english(payload.question)
     
     # Enrichissement manuel pour pallier les defaillances de traduction

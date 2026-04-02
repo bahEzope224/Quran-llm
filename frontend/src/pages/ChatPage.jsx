@@ -7,7 +7,9 @@ import {
 } from '@clerk/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+// Securite : Si l'URL ne commence pas par http, on force le protocole pour eviter les erreurs de chemin relatif
+const API_BASE_URL = rawApiUrl.startsWith('http') ? rawApiUrl : `https://${rawApiUrl}`;
 const CHAT_STORAGE_KEY = 'ilm-ai-chat-history-v1';
 
 const legalSchools = ['Hanafi', 'Maliki', 'Shafi‘i', 'Hanbali'];

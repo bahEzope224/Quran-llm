@@ -41,8 +41,13 @@ def get_quran_verses() -> list[dict]:
         for verse in verses:
             ref = verse.get("ref")
             if ref in tafsir_data:
-                html_content = tafsir_data[ref].get("text", "")
-                # Extraction simple du texte entre balises translation ou premier paragraphe
+                val = tafsir_data[ref]
+                if isinstance(val, dict):
+                    html_content = val.get("text", "")
+                else:
+                    html_content = str(val)
+                
+                # Extraction du texte pur depuis le HTML (Ibn Kathir contient beaucoup de balises)
                 match = re.search(r'<p class="en translation"[^>]*>(.*?)</p>', html_content, re.DOTALL)
                 if match:
                     verse["translation"] = re.sub(r'<[^>]+>', '', match.group(1)).strip()

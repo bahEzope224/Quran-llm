@@ -5,6 +5,7 @@ import {
   SignUpButton,
   useUser,
 } from '@clerk/react';
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';

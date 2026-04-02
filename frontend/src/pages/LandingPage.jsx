@@ -20,7 +20,9 @@ export default function LandingPage() {
     <div className="landing-container">
       {/* Navigation */}
       <nav className="landing-nav">
-        <div className="logo-text">ILM AI</div>
+        <Link to="/" style={{ textDecoration: 'none' }}>
+          <div className="logo-text">ILM AI</div>
+        </Link>
         <div className="nav-links">
           <Link to="/sign-in" className="nav-btn">Lancer l'App</Link>
         </div>

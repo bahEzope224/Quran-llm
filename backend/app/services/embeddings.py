@@ -6,40 +6,55 @@ from app.config import settings
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
-    """Genere des embeddings via Ollama et retourne une liste vide en fallback."""
-    if not texts:
-        return []
+    """Genere des embeddings via Ollama par batch (tronque a 512 chars)."""
+    batch_size = 5
+    all_embeddings = []
 
-    if settings.embeddings_provider != "ollama":
-        return []
+    for i in range(0, len(texts), batch_size):
+        # On tronque chaque texte pour eviter de depasser la limite d'Ollama/all-minilm
+        batch = [t[:512] for t in texts[i : i + batch_size]]
+        
+        if settings.embeddings_provider == "ollama":
+            payload = {
+                "model": settings.embeddings_model,
+                "input": batch,
+            }
+            auth_header = {}
+        else:
+            # Format OpenAI/Cloud compatible
+            payload = {
+                "model": settings.embeddings_model,
+                "input": batch,
+            }
+            auth_header = {"Authorization": f"Bearer {settings.llm_api_key}"} if settings.llm_api_key else {}
 
-    payload = {
-        "model": settings.embeddings_model,
-        "input": texts,
-    }
-    http_request = request.Request(
-        settings.embeddings_base_url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
+        http_request = request.Request(
+            settings.embeddings_base_url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json", **auth_header},
+            method="POST",
+        )
 
-    try:
-        with request.urlopen(
-            http_request,
-            timeout=settings.llm_timeout_seconds,
-        ) as response:
-            response_payload = json.loads(response.read().decode("utf-8"))
-    except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError):
-        return []
-
-    embeddings = response_payload.get("embeddings")
-    if not isinstance(embeddings, list):
-        return []
+        try:
+            with request.urlopen(
+                http_request,
+                timeout=settings.llm_timeout_seconds,
+            ) as response:
+                response_payload = json.loads(response.read().decode("utf-8"))
+                batch_embeddings = response_payload.get("embeddings", [])
+                if isinstance(batch_embeddings, list):
+                    all_embeddings.extend(batch_embeddings)
+        except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError) as e:
+            error_body = ""
+            if hasattr(e, 'read'):
+                try: error_body = e.read().decode("utf-8")
+                except: pass
+            print(f"ERROR in generate_embeddings batch {i}: {str(e)} | Body: {error_body}")
+            continue
 
     return [
         [float(value) for value in embedding]
-        for embedding in embeddings
+        for embedding in all_embeddings
         if isinstance(embedding, list)
     ]
 

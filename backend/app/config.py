@@ -4,9 +4,9 @@ from pydantic import BaseModel, Field
 
 
 class Settings(BaseModel):
-    app_name: str = "ILM Quran API"
+    app_name: str = "ILM AI"
     app_version: str = "0.1.0"
-    app_description: str = "Backend FastAPI pour l'application ILM Quran."
+    app_description: str = "Backend FastAPI pour l'application ILM AI."
     frontend_origins: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -24,10 +24,13 @@ class Settings(BaseModel):
         )
     )
     llm_model: str = Field(
-        default_factory=lambda: os.getenv("LLM_MODEL", "llama3.2:1b")
+        default_factory=lambda: os.getenv("LLM_MODEL", "qwen2.5-coder:7b")
+    )
+    llm_translation_model: str = Field(
+        default_factory=lambda: os.getenv("LLM_TRANSLATION_MODEL", "llama3.2:1b")
     )
     llm_timeout_seconds: float = Field(
-        default_factory=lambda: float(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+        default_factory=lambda: float(os.getenv("LLM_TIMEOUT_SECONDS", "60"))
     )
     llm_temperature: float = Field(
         default_factory=lambda: float(os.getenv("LLM_TEMPERATURE", "0.2"))
@@ -36,7 +39,7 @@ class Settings(BaseModel):
         default_factory=lambda: os.getenv("EMBEDDINGS_PROVIDER", "ollama")
     )
     embeddings_model: str = Field(
-        default_factory=lambda: os.getenv("EMBEDDINGS_MODEL", "all-minilm")
+        default_factory=lambda: os.getenv("EMBEDDINGS_MODEL", "all-minilm:latest")
     )
     embeddings_base_url: str = Field(
         default_factory=lambda: os.getenv(

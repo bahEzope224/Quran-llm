@@ -41,3 +41,11 @@ class UserProfileResponse(BaseModel):
     language: str
     mode: str
     notifications_enabled: bool
+
+
+class FeedbackRequest(BaseModel):
+    question: str
+    answer: str
+    feedback: str = Field(..., pattern="^(up|down)$")
+    profile: UserProfile | None = None
+    sources: list[SourceItem] = Field(default_factory=list)

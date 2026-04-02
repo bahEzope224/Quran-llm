@@ -116,10 +116,10 @@ QUERY_EXPANSIONS = {
     "interdite": {"forbidden", "prohibited", "haram"},
     "interdites": {"forbidden", "prohibited", "haram"},
     "haram": {"interdit", "interdits", "interdite", "interdites", "forbidden", "prohibited"},
-    "pilier": {"pillar", "pillars", "five"},
-    "piliers": {"pillar", "pillars", "five"},
     "pillar": {"pilier", "piliers", "five"},
     "pillars": {"pilier", "piliers", "five"},
+    "music": {"musical", "instruments", "song", "singing", "instrument"},
+    "musical": {"music", "instruments", "instrument"},
 }
 
 QUERY_PHRASE_EXPANSIONS = {
@@ -143,9 +143,8 @@ QUERY_PHRASE_EXPANSIONS = {
     "interdites": {"forbidden", "prohibited", "haram"},
     "haram": {"forbidden", "prohibited", "interdit", "interdits", "interdite", "interdites"},
     "pilier": {"pillar", "pillars", "built on five", "islam is built on five"},
-    "piliers": {"pillar", "pillars", "built on five", "islam is built on five"},
-    "pillar": {"pilier", "piliers", "built on five", "islam is built on five"},
     "pillars": {"pilier", "piliers", "built on five", "islam is built on five"},
+    "music": {"musical instruments", "musical", "instruments", "song", "singing", "music"},
 }
 
 TOPIC_TAG_TERMS = {

@@ -3,30 +3,88 @@ from app.services.embeddings import cosine_similarity, generate_embeddings
 from app.db.vector_store import search_similar_chunks
 
 
-def retrieve_relevant_chunks(query: str, top_k: int = 3) -> list[dict[str, str]]:
+def retrieve_relevant_chunks(query: str, top_k: int = 5) -> list[dict[str, str]]:
     """Preselction lexicale puis reranking semantique via embeddings locaux."""
-    candidate_pool = max(top_k, settings.embeddings_candidate_pool)
+    candidate_pool = max(top_k * 3, settings.embeddings_candidate_pool)
     candidates = search_similar_chunks(query=query, embedding=None, top_k=candidate_pool)
     if not candidates:
         return []
 
     texts = [query, *[chunk["content"] for chunk in candidates]]
     embeddings = generate_embeddings(texts)
+    
+    print(f"DEBUG: Texts: {len(texts)} | Embeddings: {len(embeddings)}")
+    
     if len(embeddings) != len(texts):
+        print(f"WARNING: Embedding count mismatch! Using lexical fallback. (Texts: {len(texts)}, Embeds: {len(embeddings)})")
+        # Fallback: On ajoute au moins un score par défaut pour éviter le filtre à 0
+        for chunk in candidates:
+            chunk["semantic_score"] = 0.6 # Score neutre pour passer le filtre si lexical est bon
         return candidates[:top_k]
 
     query_embedding = embeddings[0]
     ranked_candidates = []
     for chunk, chunk_embedding in zip(candidates, embeddings[1:]):
         lexical_score = float(chunk.get("lexical_score", 0))
-        type_boost = 3.0 if chunk["type"] == "quran" else 1.5 if chunk["type"] == "hadith" else 1.0
+        # Boost plus subtil pour eviter d'ecraser la pertinence semantique
+        type_boost = 1.5 if chunk["type"] == "quran" else 1.2 if chunk["type"] == "hadith" else 1.0
         semantic_score = cosine_similarity(query_embedding, chunk_embedding)
-        ranked_candidates.append(
-            (
-                (semantic_score * 10) + lexical_score + type_boost,
-                chunk,
-            )
-        )
+        
+        # Formule de score equilibree
+        final_score = (semantic_score * 15) + (lexical_score * 0.5) + type_boost
+        
+        # Attachement des scores pour filtrage ulterieur
+        chunk["semantic_score"] = float(semantic_score)
+        chunk["final_score"] = float(final_score)
+        
+        # DEBUG: Print the score for analysis
+        print(f"DEBUG: Chunk {chunk['ref']} | Type: {chunk['type']} | Semantic: {semantic_score:.3f} | Final: {final_score:.3f}")
+        
+        ranked_candidates.append((final_score, chunk))
 
     ranked_candidates.sort(key=lambda item: item[0], reverse=True)
     return [chunk for _, chunk in ranked_candidates[:top_k]]
+
+
+def retrieve_tafsir_by_ref(ref: str) -> dict[str, str] | None:
+    """Recupere le Tafsir, suit les redirections (ex: '2:43' -> '2:42')."""
+    from app.db.vector_store import load_ibn_kathir_tafsir_dataset, _strip_html, _get_tafsir_text, _infer_tags
+    
+    dataset = load_ibn_kathir_tafsir_dataset()
+    original_ref = ref
+    visited = {ref}
+    
+    current_key = ref
+    while current_key in dataset:
+        val = dataset[current_key]
+        
+        # Si la valeur est un dictionnaire, on a trouve le texte
+        if isinstance(val, dict):
+            text = _strip_html(_get_tafsir_text(val))
+            if text:
+                content = text[:2000]
+                return {
+                    "type": "tafsir",
+                    "source": "Ibn Kathir via Qul/Tarteel",
+                    "ref": f"Ibn Kathir {original_ref}",
+                    "content": content,
+                    "tags": _infer_tags(
+                        ref=original_ref,
+                        source="Ibn Kathir via Qul/Tarteel",
+                        content=content,
+                        source_type="tafsir",
+                    ),
+                }
+            return None
+        
+        # Si c'est une chaine (redirection), on suit le lien
+        if isinstance(val, str):
+            if val in visited: # Protection boucle
+                break
+            visited.add(val)
+            current_key = val
+            continue
+            
+        break
+        
+    return None

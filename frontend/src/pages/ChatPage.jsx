@@ -7,7 +7,7 @@ import {
 } from '@clerk/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 const CHAT_STORAGE_KEY = 'ilm-ai-chat-history-v1';
 
 const legalSchools = ['Hanafi', 'Maliki', 'Shafi‘i', 'Hanbali'];
@@ -410,6 +410,53 @@ export default function ChatPage() {
     }));
   }
 
+  async function handleFeedbackSubmit(messageId, feedbackType) {
+    const currentMessageIndex = messages.findIndex((m) => m.id === messageId);
+    if (currentMessageIndex === -1) {
+      return;
+    }
+
+    const assistantMessage = messages[currentMessageIndex];
+    const userMessage = messages
+      .slice(0, currentMessageIndex)
+      .reverse()
+      .find((m) => m.role === 'user');
+
+    if (!userMessage) {
+      return;
+    }
+
+    updateActiveConversation((conversation) => ({
+      ...conversation,
+      messages: conversation.messages.map((item) =>
+        item.id === messageId ? { ...item, feedback: feedbackType } : item
+      ),
+    }));
+
+    try {
+      await fetch(`${API_BASE_URL}/chat/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: userMessage.content,
+          answer: assistantMessage.answer,
+          sources: assistantMessage.sources,
+          feedback: feedbackType,
+          profile: {
+            legal_school: profile.legal_school,
+            language: profile.language,
+            mode: profile.mode,
+            notifications_enabled: profile.notifications_enabled,
+          },
+        }),
+      });
+    } catch (error) {
+      console.error('Feedback submission failed:', error);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -439,6 +486,7 @@ export default function ChatPage() {
       title: nextTitle,
       messages: [...conversation.messages, userMessage, assistantMessage],
     }));
+    setIsSidebarOpen(false);
     setIsLoadingChat(true);
     setChatError('');
     activeAssistantIdRef.current = assistantMessage.id;
@@ -510,11 +558,24 @@ export default function ChatPage() {
     <div className="ilm-chat-page">
       <header className="top-app-bar">
         <div className="brand-row">
+          <img src="/logo.svg" alt="ʿIlm Logo" className="brand-logo" />
           <span className="brand-title">ILM AI</span>
         </div>
 
         <div className="top-bar-actions">
           <div className="page-actions">
+            <button
+              className="icon-button"
+              type="button"
+              aria-label="Nouvelle discussion"
+              onClick={() => {
+                createNewConversation();
+                setActiveScreen('chat');
+              }}
+            >
+              <span className="material-symbols-outlined">edit_square</span>
+            </button>
+
             {activeScreen === 'chat' ? (
               <div className="view-toggle" aria-label="Changer de mode de reponse">
                 <button
@@ -572,7 +633,7 @@ export default function ChatPage() {
 
       <main className="chat-content">
         {activeScreen === 'chat' ? (
-          <div className="chat-layout">
+          <div className={`chat-layout ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
             <nav className="chat-sidebar-rail" aria-label="Navigation des discussions">
               <button
                 className="sidebar-rail-button"
@@ -792,31 +853,15 @@ export default function ChatPage() {
                           <button
                             className={`feedback-button ${message.feedback === 'up' ? 'selected' : ''}`}
                             type="button"
-                            onClick={() =>
-                              updateActiveConversation((conversation) => ({
-                                ...conversation,
-                                messages: conversation.messages.map((item) =>
-                                  item.id === message.id ? { ...item, feedback: 'up' } : item
-                                ),
-                              }))
-                            }
+                            onClick={() => handleFeedbackSubmit(message.id, 'up')}
                           >
                             <span className="material-symbols-outlined">thumb_up</span>
                             <span>Utile</span>
                           </button>
                           <button
-                            className={`feedback-button negative ${
-                              message.feedback === 'down' ? 'selected' : ''
-                            }`}
+                            className={`feedback-button negative ${message.feedback === 'down' ? 'selected' : ''}`}
                             type="button"
-                            onClick={() =>
-                              updateActiveConversation((conversation) => ({
-                                ...conversation,
-                                messages: conversation.messages.map((item) =>
-                                  item.id === message.id ? { ...item, feedback: 'down' } : item
-                                ),
-                              }))
-                            }
+                            onClick={() => handleFeedbackSubmit(message.id, 'down')}
                           >
                             <span className="material-symbols-outlined">thumb_down</span>
                             <span>Imprecis</span>
@@ -905,20 +950,34 @@ export default function ChatPage() {
               </div>
 
               <div className="activity-list">
-                <button className="activity-item" type="button">
+                <button
+                  className="activity-item"
+                  type="button"
+                  onClick={() => {
+                    setActiveScreen('chat');
+                    setIsSidebarOpen(true);
+                  }}
+                >
                   <div>
                     <strong>Historique</strong>
-                    <p>Retrouver les dernieres questions et reponses consultees.</p>
+                    <p>Retrouver les dernières questions et réponses consultées.</p>
                   </div>
-                  <span className="material-symbols-outlined">chevron_right</span>
+                  <span className="material-symbols-outlined">history</span>
                 </button>
 
-                <button className="activity-item" type="button">
+                <button
+                  className="activity-item"
+                  type="button"
+                  onClick={() => {
+                    createNewConversation();
+                    setActiveScreen('chat');
+                  }}
+                >
                   <div>
-                    <strong>Favoris</strong>
-                    <p>Conserver les rappels, preuves et reponses utiles.</p>
+                    <strong>Nouvelle discussion</strong>
+                    <p>Poser une nouvelle question à l'IA dès maintenant.</p>
                   </div>
-                  <span className="material-symbols-outlined">chevron_right</span>
+                  <span className="material-symbols-outlined">add_circle</span>
                 </button>
               </div>
             </article>

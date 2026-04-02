@@ -1,17 +1,39 @@
 import re
 import unicodedata
 
+from app.config import settings
 from app.models.schemas import ChatRequest, ChatResponse, SourceItem
-from app.services.llm import generate_answer, translate_text_to_french
+from app.services.llm import (
+    generate_answer,
+    translate_french_to_english,
+    translate_text_to_french,
+)
 from app.services.retriever import retrieve_relevant_chunks
 
 SOURCE_PRIORITY = ["quran", "hadith", "tafsir"]
 QUESTION_TOPIC_MAP = {
-    "prayer": ["priere", "prayer", "salat", "salah"],
+    "prayer": ["priere", "prayer", "salat", "salah", "salata", "assalata", "salawat", "recueillement"],
     "fasting": ["jeune", "fast", "fasting", "siyam", "sawm", "ramadan"],
     "interest": ["interet", "interets", "interest", "usury", "riba"],
     "pillars": ["pilier", "piliers", "pillar", "pillars", "cinq piliers", "five pillars"],
+    "music": ["musique", "music", "musical", "instrument", "instruments", "song", "singing"],
 }
+
+# Map pour hybridation de la recherche (FR -> EN)
+KEYWORD_TRANSLATION_MAP = {
+    "musique": "music musical instruments",
+    "piliers": "pillars five",
+    "priere": "prayer salat",
+    "jeune": "fasting sawm ramadan",
+    "zakat": "charity zakat",
+    "pelerinage": "pilgrimage hajj",
+    "interdit": "forbidden prohibited haram",
+    "obligatoire": "mandatory obligatory required",
+    "halal": "permissible allowed",
+    "haram": "forbidden prohibited",
+}
+RELEVANCE_THRESHOLD = 0.30  # Plus souple pour all-minilm
+SEMANTIC_TRUST_THRESHOLD = 0.60 # Score pour bypasser le pruning
 QUESTION_INTENT_MAP = {
     "obligation": ["obligatoire", "obligation", "required", "obligatory", "must"],
     "prohibition": [
@@ -23,6 +45,7 @@ QUESTION_INTENT_MAP = {
         "prohibited",
         "haram",
     ],
+    "identification": ["qui est", "qui etait", "qui fut", "who is", "who was", "who were", "identifier"],
 }
 TOPIC_METADATA = {
     "prayer": {
@@ -40,48 +63,54 @@ TOPIC_METADATA = {
     "pillars": {
         "label": "les cinq piliers de l'islam",
     },
+    "music": {
+        "label": "la musique",
+        "prohibition": "Les Hadiths (traditions prophetiques) font etat d'avertissements severes concernant certains instruments et contextes musicaux.",
+    },
 }
 
 
-def _localize_chunks(chunks: list[dict[str, str]]) -> list[dict[str, str]]:
+def _localize_chunks(chunks: list[dict[str, str]], translate_content: bool = True) -> list[dict[str, str]]:
+    """Prepare les chunks pour l'affichage (avec traduction proactive pour Tafsir/Hadith)."""
     localized_chunks: list[dict[str, str]] = []
     for chunk in chunks:
         localized_chunk = dict(chunk)
         localized_chunk["original_content"] = chunk["content"]
-        if chunk["type"] != "quran":
-            localized_chunk["content"] = translate_text_to_french(chunk["content"])
+        
+        # Le Coran reste tel quel (versets sources), le reste est traduit par defaut
+        is_quran = chunk["type"] == "quran"
+        if translate_content and not is_quran:
+            # On force la traduction car on sait que Tafsir/Hadith sont en Anglais dans notre DB
+            localized_chunk["content"] = translate_text_to_french(chunk["content"], force=True)
+            
         localized_chunks.append(localized_chunk)
     return localized_chunks
 
 
-def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]]) -> str:
+def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english_query: str = "", intent: str | None = None) -> str:
+    # On ne garde que les sources qui mentionnent vraiment le sujet
     context_block = "\n".join(
         f"- [{chunk['type']}] {chunk['source']} ({chunk['ref']}): {chunk['content']}"
         for chunk in chunks
     )
-    has_quran = any(chunk["type"] == "quran" for chunk in chunks)
 
-    return (
-        "Tu es un assistant islamique francophone.\n"
-        "Reponds clairement en francais.\n"
-        "Cite uniquement les preuves presentes dans le contexte.\n"
-        "Priorite absolue: verifier d'abord le Coran. Puis utiliser les hadiths. Puis le tafsir comme appui explicatif.\n"
-        "Si un verset coranique pertinent est present, la conclusion principale doit partir de ce verset.\n"
-        "N'inverse jamais cette hierarchie.\n"
-        "Traduis en francais les extraits anglais utilises dans ta reponse.\n"
-        "Si tu recopies un extrait arabe, il doit etre reproduit exactement sans alteration.\n"
-        "Structure attendue: 2 a 4 phrases de reponse directe en francais, sans markdown.\n"
-        "Ne genere pas de section 'Sources', de listes, ni de repetition des references: l'interface affiche deja les sources separement.\n"
-        "Si aucune preuve explicite n'est presente dans le contexte, reponds exactement: "
-        "\"Je n'ai pas de preuve explicite dans le Coran, les hadiths ou le tafsir pour cette question.\"\n"
-        f"Presence d'un verset coranique pertinent dans le contexte: {'oui' if has_quran else 'non'}.\n"
-        f"Mode demande: {payload.mode}\n"
-        f"Ecole juridique: {payload.profile.legal_school}\n"
-        f"Langue preferee: {payload.profile.language}\n"
-        f"Question: {payload.question}\n"
-        "Contexte RAG:\n"
-        f"{context_block}"
-    )
+    if intent == "identification":
+        return (
+            "Tu es un biographe islamique expert (3 a 5 PHRASES).\n"
+            "RESUME le personnage de maniere fluide en te basant sur les SOURCES fournies.\n"
+            "RIGUEUR: N'invente AUCUNE date historique ou duree de regne absente des sources.\n\n"
+            f"SOURCES:\n{context_block}\n\n"
+            f"QUESTION: {payload.question}\n"
+            "REPONSE: "
+        )
+    else:
+        persona = "Tu es un assistant musulman expert, factuel et TRES CONCIS (1 a 2 phrases)."
+        return (
+            f"{persona}\n\n"
+            f"SOURCES:\n{context_block}\n\n"
+            f"QUESTION: {payload.question}\n"
+            "REPONSE: "
+        )
 
 
 def _normalize_question(text: str) -> str:
@@ -102,7 +131,7 @@ def _detect_intent(question: str) -> str | None:
     for intent, terms in QUESTION_INTENT_MAP.items():
         if any(term in question for term in terms):
             return intent
-    if any(term in question for term in ("quels", "quelles", "liste", "list", "what are", "what is")):
+    if any(term in question for term in ("quels", "quelles", "liste", "list", "what are", "what is", "decrire", "describe")):
         return "definition"
     return None
 
@@ -132,7 +161,11 @@ def _sort_chunks_by_priority(chunks: list[dict[str, str]]) -> list[dict[str, str
     return sorted(chunks, key=lambda chunk: SOURCE_PRIORITY.index(chunk["type"]))
 
 
+    return chunks
+
+
 def _filter_chunks_for_topic(payload: ChatRequest, chunks: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Trie et filtre les chunks par priorite de source et pertinence thématique."""
     topic = _detect_topic(_normalize_question(payload.question))
     if not topic:
         return chunks
@@ -148,6 +181,44 @@ def _filter_chunks_for_topic(payload: ChatRequest, chunks: list[dict[str, str]])
     return chunks
 
 
+def _prune_irrelevant_chunks(chunks: list[dict], english_query: str) -> list[dict]:
+    """Supprime les sources qui n'ont aucun rapport lexical avec la question (Securite anti-hallucination)."""
+    # Extraction des mots-cles significatifs de la question (EN)
+    keywords = set(re.findall(r"\w{4,}", english_query.lower()))
+    if not keywords:
+        return chunks
+
+    pruned = []
+    # Mots-cles de "bruit" pour les obligations (exclure les exceptions meteo/maladie si on cherche le principe)
+    noise_patterns = ["rain", "mud", "slush", "houses", "fever", "travel"]
+    is_obligation = any(kw in english_query.lower() for kw in ["obligatory", "mandatory", "must", "order"])
+
+    for chunk in chunks:
+        # IMMUNITE: Le Coran n'est JAMAIS elague par ce filtre
+        if chunk.get("type") == "quran":
+            pruned.append(chunk)
+            continue
+            
+        content = (chunk.get("content", "") + " " + chunk.get("ref", "")).lower()
+        
+        # Filtre de bruit pour les Hadiths en contexte d'obligation generale
+        if chunk.get("type") == "hadith" and is_obligation:
+            if any(noise in content for noise in noise_patterns):
+                print(f"DEBUG: Pruning noisy Hadith {chunk['ref']} (noise detected)")
+                continue
+
+        # Si le score est tres eleve, on garde (confiance semantique)
+        if chunk.get("semantic_score", 0) > 0.8:
+            pruned.append(chunk)
+            continue
+            
+        # Sinon, verification de presence de mots-cles (au moins un mot de 4+ lettres commun)
+        if any(kw in content for kw in keywords):
+            pruned.append(chunk)
+            
+    return pruned
+
+
 def _build_rule_based_answer(payload: ChatRequest, chunks: list[dict[str, str]]) -> str | None:
     question = _normalize_question(payload.question)
     topic = _detect_topic(question)
@@ -158,10 +229,16 @@ def _build_rule_based_answer(payload: ChatRequest, chunks: list[dict[str, str]])
     relevant_chunks = [
         chunk
         for chunk in chunks
-        if chunk["type"] in SOURCE_PRIORITY and _chunk_matches_topic(chunk, topic)
+        if chunk["type"] in SOURCE_PRIORITY and (
+            _chunk_matches_topic(chunk, topic) or chunk["type"] == "quran"
+        )
     ]
     if not relevant_chunks:
         return "Je n'ai pas de preuve explicite dans le Coran, les hadiths ou le tafsir pour cette question."
+
+    # On verifie la presence scripturaire sur les chunks RELEVANT
+    has_quran = any(c["type"] == "quran" for c in relevant_chunks)
+    has_hadith = any(c["type"] == "hadith" for c in relevant_chunks)
 
     prioritized_chunks = _sort_chunks_by_priority(relevant_chunks)
     if topic == "pillars":
@@ -190,6 +267,28 @@ def _build_rule_based_answer(payload: ChatRequest, chunks: list[dict[str, str]])
             "mais la preuve principale vient d'abord du Coran."
         )
 
+    if has_quran and has_hadith and lead_sentence:
+        q_ref = next(c["ref"] for c in prioritized_chunks if c["type"] == "quran")
+        h_ref = next(c["ref"] for c in prioritized_chunks if c["type"] == "hadith")
+        return (
+            f"{lead_sentence} "
+            f"Cette obligation est etablie par le Coran (ex: {q_ref}) et detaillee par les hadiths (ex: {h_ref}). "
+            "Les deux sources concordent pour en faire un pilier central de la foi musulmane."
+        )
+
+    if top_chunk["type"] == "hadith" and lead_sentence:
+        # On ne dit "Coran silencieux" que si on n'a VRAIMENT aucun chunk Quran
+        silent_quran = "Bien que le Coran ne le mentionne pas explicitement, " if not has_quran else ""
+        return (
+            f"{lead_sentence} "
+            f"{silent_quran}le hadith ({top_chunk['ref']}) est tres clair sur ce point dans le contexte fourni. "
+            "Les savants se basent souvent sur ces traditions pour etablir les regles quand le texte coranique est silencieux."
+        )
+
+    # Si c'est une identification (Qui est...), on laisse le LLM faire la bio
+    if intent == "identification":
+        return None
+
     source_label = (
         "le Coran"
         if top_chunk["type"] == "quran"
@@ -197,9 +296,10 @@ def _build_rule_based_answer(payload: ChatRequest, chunks: list[dict[str, str]])
         if top_chunk["type"] == "hadith"
         else "le tafsir"
     )
+    # Phrase de repli plus équilibrée
     return (
-        f"Je n'ai pas de verset coranique explicite prioritaire dans le contexte pour conclure de maniere definitive. "
-        f"La source la plus pertinente retrouvee ici est {source_label} ({top_chunk['ref']})."
+        f"D'apres les sources disponibles ({source_label} - {top_chunk['ref']}), "
+        "une indication est fournie sur ce sujet, bien qu'un verset coranique direct ne soit pas cite ici."
     )
 
     return None
@@ -229,25 +329,94 @@ def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]
 
 
 def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
-    """Pipeline RAG: retrieval, construction du prompt, generation."""
-    chunks = retrieve_relevant_chunks(query=payload.question, top_k=5)
-    chunks = _filter_chunks_for_topic(payload=payload, chunks=chunks)[:3]
-    if not chunks:
+    """Pipeline RAG Ameliore: Traduction EN, Retrieval Hybride, Generation FR."""
+    # 1. Traduction de la question (avec Hybridation par mots-cles)
+    english_query = translate_french_to_english(payload.question)
+    
+    # Enrichissement manuel pour pallier les defaillances de traduction
+    lower_question = payload.question.lower()
+    extra_keywords = []
+    for fr_kw, en_kw in KEYWORD_TRANSLATION_MAP.items():
+        if fr_kw in lower_question:
+            extra_keywords.append(en_kw)
+    
+    if extra_keywords:
+        english_query = f"{english_query} {' '.join(extra_keywords)}"
+    
+    print(f"DEBUG: Original (FR): {payload.question} -> Enhanced (EN): {english_query}")
+
+    # 2. Retrieval avec la question en anglais (top_k=8 pour plus de variete)
+    raw_chunks = retrieve_relevant_chunks(query=english_query, top_k=8)
+    
+    # 3. Filtrage de pertinence hybride
+    valid_chunks = []
+    keywords = set(re.findall(r"\w{4,}", english_query.lower()))
+    for c in raw_chunks:
+        score = c.get("semantic_score", 0)
+        content = (c.get("content", "") + " " + c.get("ref", "")).lower()
+        
+        # Le SEUIL DU CORAN est desactive car ces sources sont prioritaires
+        chunk_type = c.get("type", "tafsir")
+        threshold = -1.0 if chunk_type == "quran" else RELEVANCE_THRESHOLD
+        
+        if score > threshold or (keywords and any(kw in content for kw in keywords)):
+            valid_chunks.append(c)
+    
+    # 4. Elagage par mots-cles additionnel (Nettoyage final)
+    pruned_chunks = _prune_irrelevant_chunks(valid_chunks, english_query)
+    
+    # 5. Filtrage thématique (TOP 3 initial)
+    initial_top_chunks = _filter_chunks_for_topic(payload=payload, chunks=pruned_chunks)[:3]
+    
+    # 6. Couplage Automatique Verset -> Tafsir (Enrichissement)
+    final_display_chunks = []
+    from app.services.retriever import retrieve_tafsir_by_ref
+    
+    for chunk in initial_top_chunks:
+        final_display_chunks.append(chunk)
+        if chunk["type"] == "quran":
+            # On cherche le Tafsir associe et on l'ajoute MEME si on depasse 3
+            tafsir = retrieve_tafsir_by_ref(chunk["ref"])
+            if tafsir:
+                # Eviter les doublons si le tafsir etait deja dans le top 3
+                if not any(c["ref"] == tafsir["ref"] for c in final_display_chunks):
+                    print(f"DEBUG: Auto-coupling Tafsir for {chunk['ref']} (Post-Top3)")
+                    final_display_chunks.append(tafsir)
+
+    if not final_display_chunks:
         return ChatResponse(
-            answer="Je n'ai pas de preuve explicite dans le Coran, les hadiths ou le tafsir pour cette question.",
+            answer="Désolé, je n'ai pas trouvé de sources pertinentes pour répondre à cette question aujourd'hui.",
             sources=[],
         )
 
-    localized_chunks = _localize_chunks(chunks)
-    direct_answer = _build_rule_based_answer(payload=payload, chunks=localized_chunks)
+    # localized_chunks pour l'affichage final
+    display_chunks = _localize_chunks(final_display_chunks, translate_content=True)
+    
+    # 6. Verification de reponse rapide via regles (sur TOUTE la selection pour ne rien rater du Coran)
+    direct_answer = _build_rule_based_answer(payload=payload, chunks=pruned_chunks)
+    
     if direct_answer:
         answer = direct_answer
     else:
-        prompt = build_rag_prompt(payload=payload, chunks=localized_chunks)
-        generated = generate_answer(prompt=prompt, context_chunks=chunks)
-        answer = generated["answer"]
+        # 7. Generation contextuelle via LLM
+        intent = _detect_intent(_normalize_question(payload.question))
+        prompt = build_rag_prompt(
+            payload=payload, 
+            chunks=final_display_chunks, 
+            english_query=english_query, 
+            intent=intent
+        )
+        if intent == "identification" and not direct_answer:
+            # Mode Chat (generate_answer) pour le heros, car _generate est trop sec
+            # Le persona "biographe fidele" est injecte par build_rag_prompt
+            generated = generate_answer(prompt=prompt, context_chunks=final_display_chunks)
+            answer = generated["answer"]
+        else:
+            # Mode normal pour les avis juridiques (obligation/prohibition)
+            generated = generate_answer(prompt=prompt, context_chunks=final_display_chunks)
+            answer = generated["answer"]
 
     return ChatResponse(
         answer=answer,
-        sources=_build_sources_from_chunks(localized_chunks),
+        sources=_build_sources_from_chunks(display_chunks),
     )

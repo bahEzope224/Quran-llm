@@ -181,6 +181,44 @@ export default function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [questionInput, setQuestionInput] = useState('');
   const [profile, setProfile] = useState(fallbackProfile);
+  const [feedbackStore, setFeedbackStore] = useState({});
+
+  const handleFeedback = async (message, type, comment = null) => {
+    // Si c'est un Down initial sans commentaire, on montre juste la zone de texte
+    if (type === 'down' && comment === null) {
+      setFeedbackStore(prev => ({
+        ...prev,
+        [message.id]: { type: 'down', comment: '', submitted: false, showCommentBox: true }
+      }));
+      return;
+    }
+
+    // Sinon, on envoie au backend
+    try {
+      const response = await fetch(`${API_BASE_URL}/chat/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: message.question || "Question initiale",
+          answer: message.answer || message.displayedAnswer,
+          feedback: type,
+          comment: comment,
+          sources: message.sources || [],
+          profile: profile
+        })
+      });
+
+      if (response.ok) {
+        setFeedbackStore(prev => ({
+          ...prev,
+          [message.id]: { type, comment, submitted: true, showCommentBox: false }
+        }));
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'envoi du feedback:", error);
+    }
+  };
+
   const [chatState, setChatState] = useState(() => loadStoredChatState());
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [isAnimatingAnswer, setIsAnimatingAnswer] = useState(false);
@@ -736,6 +774,67 @@ export default function ChatPage() {
                                 ))}
                               </div>
                             ) : null}
+
+                            {/* Section Feedback */}
+                            {message.isComplete && (
+                              <div className="message-feedback-container">
+                                {!feedbackStore[message.id]?.submitted ? (
+                                  <>
+                                    {!feedbackStore[message.id]?.showCommentBox ? (
+                                      <div className="feedback-buttons">
+                                        <button 
+                                          className="feedback-btn up" 
+                                          onClick={() => handleFeedback(message, 'up')}
+                                          title="Utile"
+                                        >
+                                          <span className="material-symbols-outlined">thumb_up</span>
+                                          <span>Utile</span>
+                                        </button>
+                                        <button 
+                                          className="feedback-btn down" 
+                                          onClick={() => handleFeedback(message, 'down')}
+                                          title="Imprécis"
+                                        >
+                                          <span className="material-symbols-outlined">thumb_down</span>
+                                          <span>Imprécis</span>
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="feedback-comment-box">
+                                        <p>Comment pourrions-nous être plus précis ?</p>
+                                        <textarea 
+                                          placeholder="Ex: la source du hadith manque de précision..."
+                                          value={feedbackStore[message.id]?.comment || ''}
+                                          onChange={(e) => setFeedbackStore(prev => ({
+                                            ...prev,
+                                            [message.id]: { ...prev[message.id], comment: e.target.value }
+                                          }))}
+                                        />
+                                        <div className="comment-actions">
+                                          <button 
+                                            className="submit-comment-btn"
+                                            onClick={() => handleFeedback(message, 'down', feedbackStore[message.id]?.comment)}
+                                          >
+                                            Envoyer le retour
+                                          </button>
+                                          <button 
+                                            className="skip-comment-btn"
+                                            onClick={() => handleFeedback(message, 'down', '')}
+                                          >
+                                            Passer
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="feedback-success">
+                                    <span className="material-symbols-outlined">check_circle</span>
+                                    <span>{feedbackStore[message.id]?.type === 'up' ? 'Merci pour votre retour positif ! ✨' : 'Merci, votre retour nous aide à nous améliorer.'}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </article>
 
                           {message.isComplete && sourceCards.length ? (

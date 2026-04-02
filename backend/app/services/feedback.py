@@ -24,6 +24,7 @@ def save_feedback(payload: FeedbackRequest) -> bool:
             "question": payload.question,
             "answer": payload.answer,
             "feedback": payload.feedback,
+            "comment": payload.comment,
             "profile": payload.profile.dict() if payload.profile else None,
             "sources": [s.dict() for s in payload.sources] if payload.sources else [],
         }

@@ -48,5 +48,6 @@ class FeedbackRequest(BaseModel):
     question: str
     answer: str
     feedback: str = Field(..., pattern="^(up|down)$")
+    comment: str | None = None
     profile: UserProfile | None = None
     sources: list[SourceItem] = Field(default_factory=list)

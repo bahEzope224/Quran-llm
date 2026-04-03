@@ -19,7 +19,7 @@ QUESTION_TOPIC_MAP = {
     "pillars": ["pilier", "piliers", "pillar", "pillars", "cinq piliers", "five pillars"],
     "music": ["musique", "music", "musical", "instrument", "instruments", "song", "singing"],
     "general": ["islam", "musulman", "muslim", "religion", "dieu", "allah", "prophete", "prophet", "coran", "quran", "hadith", "sunnah", "foi", "faith", "iman", "ihsan", "priere", "hajj", "zakat", "jeune", "fasting", "halal", "haram"],
-    "biography": ["vie", "life", "naissance", "birth", "mort", "death", "mariage", "marriage", "epouse", "wife", "age", "biographie", "biography", "khadija", "aisha", "fatima"],
+    "biography": ["vie", "life", "naissance", "birth", "mort", "death", "mariage", "marriage", "epouse", "wife", "age", "biographie", "biography", "khadija", "aisha", "fatima", "décédé", "décès", "décédée", "mourir", "mort", "né", "né à", "born", "died", "passed away", "prophete", "prohete", "muhammad", "quand", "when", "date", "year", "année"],
 }
 
 # Map de traduction pour renforcer les mots-cles critiques
@@ -413,7 +413,8 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     print(f"DEBUG: Original (FR): {payload.question} -> Enhanced (EN): {english_query}")
 
     # 2. Retrieval avec Deep Search (top_k=15)
-    topic = _detect_topic(normalized_q)
+    # On analyse le sujet sur la question originale + sa version enrichie (Double Check)
+    topic = _detect_topic(normalized_q + " " + english_query.lower())
     raw_chunks = retrieve_relevant_chunks(query=english_query, top_k=15, topic=topic)
     
     # 3. Filtrage de pertinence hybride

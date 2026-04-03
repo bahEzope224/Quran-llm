@@ -179,10 +179,17 @@ export default function ChatPage() {
   const { isLoaded: isUserLoaded, user } = useUser();
   const [activeView, setActiveView] = useState('response');
   const [activeScreen, setActiveScreen] = useState('chat');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [questionInput, setQuestionInput] = useState('');
   const [profile, setProfile] = useState(fallbackProfile);
   const [feedbackStore, setFeedbackStore] = useState({});
+
+  // Ouverture intelligente de la sidebar au montage (Desktop uniquement)
+  useEffect(() => {
+    if (window.innerWidth > 1024) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
 
   const handleFeedback = async (message, type, comment = null) => {
     // Si c'est un Down initial sans commentaire, on montre juste la zone de texte

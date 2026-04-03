@@ -10,6 +10,7 @@ from app.core.exceptions import AuthException
 CLERK_INSTANCE_URL = "https://dashing-cougar-0.clerk.accounts.dev"
 JWKS_URL = f"{CLERK_INSTANCE_URL}/.well-known/jwks.json"
 ADMIN_EMAIL = "contact@ibrahima-bah.com"
+ADMIN_USER_IDS = ["user_3Bq0yMWF3aREEtrg18HaJEjealk"] # Vos cles de secours
 
 security = HTTPBearer()
 
@@ -66,20 +67,20 @@ async def get_current_admin(auth: HTTPAuthorizationCredentials = Depends(securit
             user_id = payload.get("sub") # Toujours present dans Clerk
             
             if not email:
-                # Log interne pour Railway
-                keys_found = list(payload.keys())
-                print(f"DEBUG (Auth): ID Utilisateur: {user_id} | Champs presents: {keys_found}")
+                # Fallback : Si l'email est manquant (config Clerk), on verifie l'ID utilisateur
+                if user_id in ADMIN_USER_IDS:
+                    print(f"DEBUG (Auth): Acces Admin autorise via fallback ID: {user_id}")
+                    return payload
                 
-                # Le message est renvoye au frontend : l'utilisateur pourra copier son ID (sub)
                 raise AuthException(
-                    message=f"Acces refuse : Email non trouve. Votre ID unique est : {user_id}. Champs presents: {keys_found}. Transmettez cet ID a l'assistant pour debloquer l'acces.",
+                    message="Acces refuse : Email non trouve dans le token. Verifiez votre configuration Clerk.",
                     location="auth_service.get_current_admin"
                 )
             
-            if email != ADMIN_EMAIL:
-                print(f"DEBUG (Auth): Tentative acces par {email} au lieu de {ADMIN_EMAIL}")
+            if email != ADMIN_EMAIL and user_id not in ADMIN_USER_IDS:
+                print(f"DEBUG (Auth): Tentative acces refuse pour {email} / {user_id}")
                 raise AuthException(
-                    message=f"Acces refuse : {email} n'est pas autorise.",
+                    message=f"Acces refuse : Votre compte n'est pas autorise.",
                     location="auth_service.get_current_admin"
                 )
             

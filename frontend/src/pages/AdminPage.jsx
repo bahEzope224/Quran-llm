@@ -4,6 +4,8 @@ import { Navigate, Link } from 'react-router-dom';
 import { 
   LineChart, 
   Line, 
+  BarChart,
+  Bar,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -133,44 +135,74 @@ export default function AdminPage() {
             </article>
           </section>
 
-          {/* Graphique d'evolution */}
-          <section className="admin-chart-section container-card">
-            <h2>Évolution de la Qualité</h2>
-            <div className="chart-wrapper" style={{ height: 350 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={history}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fontSize: 12 }} 
-                    tickFormatter={(val) => new Date(val).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
-                  />
-                  <Legend verticalAlign="top" height={36}/>
-                  <Line 
-                    type="monotone" 
-                    dataKey="up" 
-                    name="Preuves Utiles (Up)" 
-                    stroke="#3182ce" 
-                    strokeWidth={3} 
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }} 
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="down" 
-                    name="Imprécisions (Down)" 
-                    stroke="#e53e3e" 
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+          {/* Graphiques d'evolution */}
+          <section className="admin-charts-grid">
+            <article className="admin-chart-section container-card">
+              <h2>Évolution de la Qualité</h2>
+              <div className="chart-wrapper" style={{ height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={history}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }} 
+                      tickFormatter={(val) => new Date(val).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                    />
+                    <Legend verticalAlign="top" height={36}/>
+                    <Line 
+                      type="monotone" 
+                      dataKey="up" 
+                      name="Preuves Utiles (Up)" 
+                      stroke="#3182ce" 
+                      strokeWidth={3} 
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }} 
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="down" 
+                      name="Imprécisions (Down)" 
+                      stroke="#e53e3e" 
+                      strokeWidth={3}
+                      dot={{ r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </article>
+
+            <article className="admin-chart-section container-card">
+              <h2>Volume des Questions</h2>
+              <div className="chart-wrapper" style={{ height: 350 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={history}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }} 
+                      tickFormatter={(val) => new Date(val).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      cursor={{fill: '#f9fafb'}}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                    />
+                    <Bar 
+                      dataKey="total" 
+                      name="Nombre de Questions" 
+                      fill="#123825" 
+                      radius={[6, 6, 0, 0]} 
+                      barSize={40}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </article>
           </section>
 
           {/* Feedback List */}

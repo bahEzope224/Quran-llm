@@ -50,8 +50,9 @@ async def get_history():
         if not date: continue
         
         if date not in history:
-            history[date] = {"date": date, "up": 0, "down": 0}
+            history[date] = {"date": date, "up": 0, "down": 0, "total": 0}
         
+        history[date]["total"] += 1
         if f.get("feedback") == "up":
             history[date]["up"] += 1
         elif f.get("feedback") == "down":

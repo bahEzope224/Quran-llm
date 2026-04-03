@@ -2044,3 +2044,21 @@ a {
   color: #101828 !important;
   margin-bottom: 8px !important;
 }
+
+/* --- ADMIN CHARTS GRID --- */
+.admin-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.admin-charts-grid .admin-chart-section {
+  margin-bottom: 0; /* On gere l'espacement via la grille */
+}
+
+@media (max-width: 1024px) {
+  .admin-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}

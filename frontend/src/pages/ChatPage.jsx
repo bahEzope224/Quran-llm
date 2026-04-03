@@ -509,11 +509,21 @@ export default function ChatPage() {
       animateAssistantAnswer(assistantMessage.id, data.answer, data.sources);
     } catch (err) {
       setChatError('');
+      
+      let finalMessage = err.message || "Désolé, je ne peux pas répondre pour le moment.";
+      let finalErrorId = err.error_id;
+
+      // Detection des erreurs reseau pures (Failed to fetch) ou serveur injoignable sans JSON
+      if (err.message?.toLowerCase().includes('fetch') || !finalErrorId) {
+        finalMessage = "Le serveur est momentanément injoignable (Perturbation réseau ou mise à jour de l'infrastructure). Veuillez réessayer dans quelques instants.";
+        finalErrorId = "NET-001";
+      }
+
       finalizeAssistantMessage(
         assistantMessage.id, 
-        err.message || "Désolé, je ne peux pas répondre pour le moment car le serveur de recherche est hors ligne. Veuillez réessayer dans quelques instants.", 
+        finalMessage, 
         [],
-        err.error_id
+        finalErrorId
       );
     }
   }

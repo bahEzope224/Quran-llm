@@ -38,3 +38,49 @@ async def get_stats():
 async def list_feedbacks():
     """Liste detaillee des feedbacks."""
     return get_all_feedbacks()
+
+@router.get("/history")
+async def get_history():
+    """Recupere l'historique des feedbacks par jour."""
+    feedbacks = get_all_feedbacks()
+    history = {}
+    
+    for f in feedbacks:
+        date = f.get("timestamp", "").split("T")[0]
+        if not date: continue
+        
+        if date not in history:
+            history[date] = {"date": date, "up": 0, "down": 0}
+        
+        if f.get("feedback") == "up":
+            history[date]["up"] += 1
+        elif f.get("feedback") == "down":
+            history[date]["down"] += 1
+            
+    # Trier par date croissante
+    return sorted(history.values(), key=lambda x: x["date"])
+
+@router.delete("/feedback/{timestamp}")
+async def delete_feedback(timestamp: str):
+    """Supprime un feedback par son timestamp."""
+    if not FEEDBACK_FILE.exists():
+        raise HTTPException(status_code=404, detail="Fichier non trouve")
+    
+    found = False
+    temp_records = []
+    with open(FEEDBACK_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            record = json.loads(line)
+            if record.get("timestamp") == timestamp:
+                found = True
+                continue
+            temp_records.append(record)
+    
+    if not found:
+        raise HTTPException(status_code=404, detail="Feedback non trouve")
+        
+    with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
+        for rec in temp_records:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            
+    return {"status": "deleted"}

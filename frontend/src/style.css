@@ -1646,22 +1646,39 @@ a {
 
 @media (max-width: 560px) {
   .top-app-bar {
-    padding: 10px 16px;
-    height: auto;
-    flex-wrap: nowrap; /* Garder le logo et le menu sur une ligne */
-    gap: 12px;
+    padding: 0 12px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   
-  .brand-row {
-    flex: 1;
-    min-width: 0;
+  .brand-title {
+    display: none; /* Cache le texte pour gagner de la place */
   }
 
-  .brand-title {
-    font-size: 1.05rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .top-bar-left {
+    min-width: unset;
+  }
+
+  .top-bar-right {
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .top-bar-actions {
+    gap: 8px;
+  }
+
+  .view-toggle {
+    padding: 2px;
+    transform: scale(0.9);
+  }
+
+  .toggle-pill {
+    padding: 6px 12px;
+    font-size: 0.65rem;
   }
 
   .assistant-response-card {

@@ -1052,6 +1052,10 @@ export default function ChatPage() {
 
       {activeScreen === 'chat' ? (
         <div className="composer-shell">
+          <p className="composer-disclaimer">
+            Avertissement : Ce service ne constitue pas une fatwa. Verifiez les reponses de l&apos;IA 
+            aupres de sources authentiques. ILM AI decline toute responsabilite quant a l&apos;interpretation des resultats.
+          </p>
           <form className="composer" onSubmit={handleSubmit}>
             <label className="sr-only" htmlFor="chat-question">
               Posez votre question

@@ -620,6 +620,7 @@ a {
   flex-direction: column;
   align-items: stretch;
   gap: 32px;
+  padding-bottom: 180px; /* Marge pour l'input fixe et le disclaimer */
 }
 
 .empty-chat-state {
@@ -1405,9 +1406,11 @@ a {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 24px;
+  bottom: 0;
   z-index: 40;
-  padding: 0 16px;
+  padding: 40px 16px 24px;
+  background: linear-gradient(to top, #f7faf8 85%, rgba(247, 250, 248, 0) 100%);
+  backdrop-filter: blur(4px);
 }
 
 .composer {
@@ -1694,5 +1697,24 @@ a {
   .assistant-response-text {
     font-size: 0.9rem;
     line-height: 1.5;
+  }
+}
+
+.composer-disclaimer {
+  max-width: 42rem;
+  margin: 0 auto 10px;
+  font-size: 0.65rem;
+  line-height: 1.6;
+  font-weight: 500;
+  color: #667085;
+  text-align: center;
+  padding: 0 12px;
+}
+
+@media (max-width: 560px) {
+  .composer-disclaimer {
+    font-size: 0.6rem;
+    margin-bottom: 6px;
+    line-height: 1.4;
   }
 }

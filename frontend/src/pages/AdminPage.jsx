@@ -139,8 +139,8 @@ export default function AdminPage() {
           <section className="admin-charts-grid">
             <article className="admin-chart-section container-card">
               <h2>Évolution de la Qualité</h2>
-              <div className="chart-wrapper" style={{ height: 350 }}>
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="chart-wrapper" style={{ height: '350px' }}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <LineChart data={history}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis 

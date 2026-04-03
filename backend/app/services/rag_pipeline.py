@@ -446,30 +446,35 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
         query_entities = [e for e in entities if e in payload.question.lower()]
         
         if best_score > 0.75:
-            print(f"DEBUG: High Confidence Match (Score: {best_score}). Applying Entity-Aware Trimming.")
+            # GAP DYNAMIQUE : Si c'est un fait biographique excellent, on devient impitoyable (0.05)
+            # sinon on reste sur une marge de securite standard (0.15)
+            primary_type = initial_top_chunks[0].get("type")
+            gap_threshold = 0.05 if (primary_type == "seerah" and best_score > 0.80) else 0.15
+            
+            print(f"DEBUG: High Confidence Match ({best_score:.2f}). Gap Threshold: {gap_threshold}")
             
             if len(initial_top_chunks) > 1:
                 new_top = [initial_top_chunks[0]]
-                gap_threshold = 0.2
                 
                 # On verifie si le meilleur resultat contient deja les noms cites
                 best_content = (initial_top_chunks[0].get("content", "") + " " + initial_top_chunks[0].get("source", "")).lower()
-                best_has_entity = any(ent in best_content for ent in query_entities)
+                
+                # ENTITY LOCK REFINEMENT: On ignore "muhammad" pour le verrouillage s'il est seul
+                # car il est present partout. On ne garde une source faible que pour des noms specifiques (ex: Khadija).
+                critical_entities = [e for e in query_entities if e != "muhammad"]
+                best_has_entity = any(ent in best_content for ent in critical_entities)
                 
                 for i in range(1, len(initial_top_chunks)):
                     chunk = initial_top_chunks[i]
                     score = chunk.get("semantic_score", 0)
                     content = (chunk.get("content", "") + " " + chunk.get("source", "")).lower()
                     
-                    # ENTITY LOCK: Si la source contient un nom cite mais pas la n°1, on la GARDE
-                    # meme si l'ecart est important (Indispensable pour Khadija vs Aisha)
-                    has_locked_entity = any(ent in content for ent in query_entities)
+                    # On garde si c'est EXTREMEMENT proche OU si ca contient une entite critique manquante
+                    has_locked_entity = any(ent in content for ent in critical_entities)
                     
                     if (best_score - score) < gap_threshold or (has_locked_entity and not best_has_entity):
-                        # On garde si c'est assez proche OU si ca contient l'entite manquante
                         new_top.append(chunk)
                     else:
-                        # Trop loin et sans entite critique, on arrete
                         break
                 initial_top_chunks = new_top
             else:

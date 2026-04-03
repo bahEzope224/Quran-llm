@@ -12,7 +12,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     if hasattr(request.state, "user"):
         user_id = getattr(request.state.user, "id", user_id)
 
-    # Formatage de la reponse
+    # Formatage de la reponse avec headers CORS de secours pour diagnostic frontend
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
@@ -22,6 +22,10 @@ async def global_exception_handler(request: Request, exc: Exception):
             "location": "global_handler",
             "type": "INTERNAL_SERVER_ERROR",
             "user_id": user_id
+        },
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true"
         }
     )
 
@@ -43,5 +47,9 @@ async def app_exception_handler(request: Request, exc: BaseAppException):
             "type": exc.__class__.__name__,
             "user_id": user_id,
             "details": exc.details
+        },
+        headers={
+            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
+            "Access-Control-Allow-Credentials": "true"
         }
     )

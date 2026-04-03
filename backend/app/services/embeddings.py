@@ -59,12 +59,9 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
                     use_fallback = True
 
         except (error.URLError, error.HTTPError, TimeoutError, ConnectionRefusedError):
-            # Si on est sur localhost et que ca echoue, c'est normal en PROD
-            if "127.0.0.1" in settings.embeddings_base_url or "localhost" in settings.embeddings_base_url:
-                print(f"DEBUG: Ollama local non detecte au Batch {i}. Basculement sur FastEmbed.")
-                use_fallback = True
-            else:
-                raise
+            # Basculement radical : peu importe l'erreur ou l'URL, on passe en local
+            print(f"DEBUG: Echec fournisseur embeddings au Batch {i}. Basculement inconditionnel sur FastEmbed.")
+            use_fallback = True
         except Exception as e:
             print(f"ERROR: Erreur imprevue au Batch {i}: {e}")
             use_fallback = True

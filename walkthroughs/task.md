@@ -1,9 +1,12 @@
-- [/] Mise en place du Système d'Exceptions
-    - [ ] Créer `backend/app/core/exceptions.py` (Classes custom)
-    - [ ] Créer `backend/app/core/error_handlers.py` (Moteur de réponse)
-    - [ ] Intégrer les handlers dans `backend/app/main.py`
-- [ ] Migration des Services
-    - [ ] Mettre à jour `backend/app/services/embeddings.py`
-    - [ ] Mettre à jour `backend/app/services/feedback.py`
+- [ ] Refonte Esthétique de la Discussion
+    - [ ] Mettre à jour `frontend/src/style.css` (Styles de bulles)
+    - [ ] Ajuster l'alignement dans `frontend/src/pages/ChatPage.jsx`
+- [x] Mise en place du Système d'Exceptions
+    - [x] Créer `backend/app/core/exceptions.py` (Classes custom)
+    - [x] Créer `backend/app/core/error_handlers.py` (Moteur de réponse)
+    - [x] Intégrer les handlers dans `backend/app/main.py`
+- [x] Migration des Services
+    - [x] Mettre à jour `backend/app/services/embeddings.py`
+    - [x] Mettre à jour `backend/app/services/feedback.py`
 - [ ] Vérification du format JSON des erreurs
 - [ ] Création du walkthrough final

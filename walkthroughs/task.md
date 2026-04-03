@@ -1,4 +1,14 @@
-- [ ] Refonte Esthétique de la Discussion
+- [ ] Résolution Production 502 & Unification
+    - [ ] Corriger `backend/app/core/exceptions.py` (Code 502 -> 503)
+    - [ ] Déplacer `app/routers/admin.py` vers `app/routes/admin.py`
+    - [ ] Supprimer le dossier redondant `app/routers/`
+    - [ ] Mettre à jour les imports dans `backend/app/main.py`
+    - [ ] Push Git pour déclencher le déploiement Railway
+- [x] Audit de Sécurité Admin (V2)
+    - [ ] Créer le script de pénétration `backend/tests/security/admin_penetration_test.py`
+    - [ ] Exécuter les tests d'intrusion (Black-Box & Logic)
+    - [ ] Générer le rapport final `analyse_securite/security_report_admin.md`
+- [x] Refonte Esthétique de la Discussion
     - [ ] Mettre à jour `frontend/src/style.css` (Styles de bulles)
     - [ ] Ajuster l'alignement dans `frontend/src/pages/ChatPage.jsx`
 - [x] Mise en place du Système d'Exceptions

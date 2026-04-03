@@ -18,7 +18,7 @@ class BaseAppException(Exception):
 class LLMException(BaseAppException):
     """Erreurs liees aux modeles de langage (Ollama, OpenAI, RAG)."""
     def __init__(self, message: str, location: str = "llm_service", details: Optional[Dict[str, Any]] = None):
-        super().__init__(message, status_code=502, location=location, details=details)
+        super().__init__(message, status_code=503, location=location, details=details)
 
 class AuthException(BaseAppException):
     """Erreurs liees a l'authentification Clerk ou aux permissions Admin."""

@@ -7,7 +7,7 @@ from app.routes.chat import router as chat_router
 from app.routes.user import router as user_router
 
 
-from app.routers.admin import router as admin_router
+from app.routes.admin import router as admin_router
 
 
 from app.core.exceptions import BaseAppException

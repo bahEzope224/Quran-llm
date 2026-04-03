@@ -66,13 +66,13 @@ async def get_current_admin(auth: HTTPAuthorizationCredentials = Depends(securit
             user_id = payload.get("sub") # Toujours present dans Clerk
             
             if not email:
-                # Log interne pour Railway (visible uniquement par vous dans la console)
+                # Log interne pour Railway
                 keys_found = list(payload.keys())
                 print(f"DEBUG (Auth): ID Utilisateur: {user_id} | Champs presents: {keys_found}")
                 
-                # Le message d'erreur est renvoye au frontend pour diagnostic
+                # Le message est renvoye au frontend : l'utilisateur pourra copier son ID (sub)
                 raise AuthException(
-                    message=f"Acces refuse : Email non trouve dans le token. Champs dans votre template Clerk: {keys_found}. Verifiez votre configuration JWT.",
+                    message=f"Acces refuse : Email non trouve. Votre ID unique est : {user_id}. Champs presents: {keys_found}. Transmettez cet ID a l'assistant pour debloquer l'acces.",
                     location="auth_service.get_current_admin"
                 )
             
@@ -85,6 +85,9 @@ async def get_current_admin(auth: HTTPAuthorizationCredentials = Depends(securit
             
             return payload
 
+    except AuthException as e:
+        # On laisse passer nos propres exceptions de diagnostic
+        raise e
     except JWTError as e:
         raise AuthException(
             message=f"Session invalide ou expiree : {str(e)}",
@@ -93,7 +96,7 @@ async def get_current_admin(auth: HTTPAuthorizationCredentials = Depends(securit
     except Exception as e:
         # On ne renvoie plus d'HTTPException brut pour preserver les headers CORS
         raise AuthException(
-            message=f"Erreur interne de securite : {str(e)}",
+            message=f"Erreur interne de securite critique : {str(e)}",
             location="auth_service.get_current_admin"
         )
 

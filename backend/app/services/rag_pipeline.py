@@ -22,8 +22,18 @@ QUESTION_TOPIC_MAP = {
     "biography": ["vie", "life", "naissance", "birth", "mort", "death", "mariage", "marriage", "epouse", "wife", "age", "biographie", "biography", "khadija", "aisha", "fatima"],
 }
 
-# Map pour hybridation de la recherche (FR -> EN)
+# Map de traduction pour renforcer les mots-cles critiques
 KEYWORD_TRANSLATION_MAP = {
+    "mariage": "marriage wedding married",
+    "épouse": "wife married spouses",
+    "khadija": "khadija khadijah",
+    "aïcha": "aisha aysha ayesha",
+    "age": "age years year how old",
+    "né": "born birth birthed",
+    "naissance": "born birth birthed",
+    "décédé": "death died passed away deceased",
+    "mort": "death died passed away deceased",
+    "quand": "when time date year",
     "musique": "music musical instruments",
     "piliers": "pillars five",
     "priere": "prayer salat",
@@ -198,9 +208,6 @@ def _sort_chunks_by_priority(chunks: list[dict[str, str]]) -> list[dict[str, str
     return sorted(chunks, key=lambda chunk: SOURCE_PRIORITY.index(chunk["type"]))
 
 
-    return chunks
-
-
 def _filter_chunks_for_topic(payload: ChatRequest, chunks: list[dict[str, str]]) -> list[dict[str, str]]:
     """Trie et filtre les chunks par priorite de source et pertinence thématique."""
     topic = _detect_topic(_normalize_question(payload.question))
@@ -227,8 +234,8 @@ def _prune_irrelevant_chunks(chunks: list[dict], english_query: str) -> list[dic
     pruned = []
     noise_patterns = ["rain", "mud", "slush", "houses", "fever", "travel"]
     is_obligation = any(kw in english_query.lower() for kw in ["obligatory", "mandatory", "must", "order"])
-    # Detecter si on cherche un chiffre (age, number, how many, year)
-    wants_number = any(kw in english_query.lower() for kw in ["age", "year", "how many", "how old", "number", "date"])
+    # Detection de l'intention "Chiffres/Dates"
+    wants_number = any(kw in english_query.lower() for kw in ["age", "year", "how many", "how old", "number", "date", "when", "born", "died"])
 
     for chunk in chunks:
         if chunk.get("type") == "quran":
@@ -345,8 +352,6 @@ def _build_rule_based_answer(payload: ChatRequest, chunks: list[dict[str, str]])
         "une indication est fournie sur ce sujet, bien qu'un verset coranique direct ne soit pas cite ici."
     )
 
-    return None
-
 
 def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]:
     """Construit les sources a partir des chunks."""
@@ -407,8 +412,9 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
 
     print(f"DEBUG: Original (FR): {payload.question} -> Enhanced (EN): {english_query}")
 
-    # 2. Retrieval avec la question en anglais (top_k=8 pour plus de variete)
-    raw_chunks = retrieve_relevant_chunks(query=english_query, top_k=8)
+    # 2. Retrieval avec Deep Search (top_k=15)
+    topic = _detect_topic(normalized_q)
+    raw_chunks = retrieve_relevant_chunks(query=english_query, top_k=15, topic=topic)
     
     # 3. Filtrage de pertinence hybride
     valid_chunks = []
@@ -434,8 +440,8 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     if initial_top_chunks:
         best_score = initial_top_chunks[0].get("semantic_score", 0)
         
-        # Identification des noms propres cités (Entity Detection simple)
-        entities = ["khadija", "aisha", "aysha", "khadijah", "fatima", "maryam", "assia", "asiya", "muhammad"]
+        # Entity Lock : Si un nom propre ou un fait vital (mort/vie) est detecte, on garde
+        entities = ["khadija", "aisha", "aysha", "khadijah", "fatima", "maryam", "assia", "asiya", "muhammad", "death", "born", "died", "age"]
         query_entities = [e for e in entities if e in payload.question.lower()]
         
         if best_score > 0.75:

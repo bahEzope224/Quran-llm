@@ -3,7 +3,7 @@ from app.services.embeddings import cosine_similarity, generate_embeddings
 from app.db.vector_store import search_similar_chunks
 
 
-def retrieve_relevant_chunks(query: str, top_k: int = 5) -> list[dict[str, str]]:
+def retrieve_relevant_chunks(query: str, top_k: int = 5, topic: str | None = None) -> list[dict[str, str]]:
     """Preselction lexicale puis reranking semantique via embeddings locaux."""
     candidate_pool = max(top_k * 3, settings.embeddings_candidate_pool)
     candidates = search_similar_chunks(query=query, embedding=None, top_k=candidate_pool)
@@ -13,32 +13,34 @@ def retrieve_relevant_chunks(query: str, top_k: int = 5) -> list[dict[str, str]]
     texts = [query, *[chunk["content"] for chunk in candidates]]
     embeddings = generate_embeddings(texts)
     
-    print(f"DEBUG: Texts: {len(texts)} | Embeddings: {len(embeddings)}")
+    print(f"DEBUG: Texts: {len(texts)} | Embeddings: {len(embeddings)} | Topic: {topic}")
     
     if len(embeddings) != len(texts):
         print(f"WARNING: Embedding count mismatch! Using lexical fallback. (Texts: {len(texts)}, Embeds: {len(embeddings)})")
-        # Fallback: On ajoute au moins un score par défaut pour éviter le filtre à 0
         for chunk in candidates:
-            chunk["semantic_score"] = 0.6 # Score neutre pour passer le filtre si lexical est bon
+            chunk["semantic_score"] = 0.6
         return candidates[:top_k]
 
     query_embedding = embeddings[0]
     ranked_candidates = []
     for chunk, chunk_embedding in zip(candidates, embeddings[1:]):
         lexical_score = float(chunk.get("lexical_score", 0))
-        # Boost plus subtil pour eviter d'ecraser la pertinence semantique
-        type_boost = 1.5 if chunk["type"] == "quran" else 1.2 if chunk["type"] == "hadith" else 1.0
         semantic_score = cosine_similarity(query_embedding, chunk_embedding)
         
-        # Formule de score equilibree
-        final_score = (semantic_score * 15) + (lexical_score * 0.5) + type_boost
+        # Boost dynamique base sur le topic
+        chunk_type = chunk.get("type", "unknown")
+        if topic == "biography":
+            # Si on cherche une info bio, la Seerah est ROI
+            type_boost = 1.8 if chunk_type == "seerah" else 1.0 # Le Coran devient neutre
+        else:
+            # Boosts par defaut (priorite Coran/Sunnah pour la charia)
+            type_boost = 1.5 if chunk_type == "quran" else 1.2 if chunk_type == "hadith" else 1.0
         
-        # Attachement des scores pour filtrage ulterieur
+        # Formule de score equilibree : le semantique domine (x15)
+        final_score = (float(semantic_score) * 15) + (lexical_score * 0.5) + type_boost
+        
         chunk["semantic_score"] = float(semantic_score)
         chunk["final_score"] = float(final_score)
-        
-        # DEBUG: Print the score for analysis
-        print(f"DEBUG: Chunk {chunk['ref']} | Type: {chunk['type']} | Semantic: {semantic_score:.3f} | Final: {final_score:.3f}")
         
         ranked_candidates.append((final_score, chunk))
 

@@ -15,6 +15,7 @@ HADITH_COLLECTION_FILES = [
     "Sunan an-Nasa'i.json",
 ]
 ISLAMQA_FATWAS_JSON = DATA_DIR / "islamqa_fatwas.json"
+SEERAH_JSON = DATA_DIR / "seerah.json"
 
 
 def list_available_datasets() -> list[str]:
@@ -90,3 +91,11 @@ def load_islamqa_dataset() -> list[dict]:
         return []
 
     return json.loads(ISLAMQA_FATWAS_JSON.read_text(encoding="utf-8"))
+
+
+def load_seerah_dataset() -> list[dict]:
+    """Charge le dataset de la Sira (biographie du Prophète)."""
+    if not SEERAH_JSON.exists():
+        return []
+
+    return json.loads(SEERAH_JSON.read_text(encoding="utf-8"))

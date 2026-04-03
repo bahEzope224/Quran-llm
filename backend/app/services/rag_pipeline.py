@@ -10,7 +10,7 @@ from app.services.llm import (
 )
 from app.services.retriever import retrieve_relevant_chunks
 
-SOURCE_PRIORITY = ["quran", "hadith", "tafsir", "fatwa"]
+SOURCE_PRIORITY = ["quran", "seerah", "hadith", "tafsir", "fatwa"]
 # Map pour la classification des questions
 QUESTION_TOPIC_MAP = {
     "prayer": ["priere", "prayer", "salat", "salah", "salata", "assalata", "salawat", "recueillement"],
@@ -19,6 +19,7 @@ QUESTION_TOPIC_MAP = {
     "pillars": ["pilier", "piliers", "pillar", "pillars", "cinq piliers", "five pillars"],
     "music": ["musique", "music", "musical", "instrument", "instruments", "song", "singing"],
     "general": ["islam", "musulman", "muslim", "religion", "dieu", "allah", "prophete", "prophet", "coran", "quran", "hadith", "sunnah", "foi", "faith", "iman", "ihsan", "priere", "hajj", "zakat", "jeune", "fasting", "halal", "haram"],
+    "biography": ["vie", "life", "naissance", "birth", "mort", "death", "mariage", "marriage", "epouse", "wife", "age", "biographie", "biography", "khadija", "aisha", "fatima"],
 }
 
 # Map pour hybridation de la recherche (FR -> EN)
@@ -353,9 +354,10 @@ def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]
         "quran": "Texte source coranique retourne par le retriever.",
         "tafsir": "Explication savante retournee par le retriever.",
         "hadith": "Hadith retourne par le retriever.",
+        "seerah": "Element de la biographie prophetique (Sira) retourne par le retriever.",
         "fatwa": "Avis jurisprudentiel (Fatwa) d'IslamQA utilise comme clarification pratique.",
     }
-    type_priority = {"quran": 0, "hadith": 1, "tafsir": 2, "fatwa": 3}
+    type_priority = {"quran": 0, "seerah": 1, "hadith": 2, "tafsir": 3, "fatwa": 4}
     ordered_chunks = sorted(chunks, key=lambda chunk: type_priority.get(chunk["type"], 9))
     return [
         SourceItem(
@@ -426,25 +428,40 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     pruned_chunks = _prune_irrelevant_chunks(valid_chunks, english_query)
     
     # 5. Filtrage thématique (TOP 3 initial)
-    initial_top_chunks = _filter_chunks_for_topic(payload=payload, chunks=pruned_chunks)[:3]
+    initial_top_chunks = _filter_chunks_for_topic(payload=payload, chunks=pruned_chunks)
+    
+    # --- RAFFINEMENT DE CONFIANCE (Anti-Bruit) ---
+    if initial_top_chunks:
+        best_score = initial_top_chunks[0].get("semantic_score", 0)
+        # Si on a un match parfait (score > 0.85), on elague le bruit secondaire (on ne garde que 1 ou 2 sources max)
+        if best_score > 0.85:
+            print(f"DEBUG: Perfect Match found (Score: {best_score}). Reducing context noise.")
+            initial_top_chunks = initial_top_chunks[:2]
+        else:
+            initial_top_chunks = initial_top_chunks[:3]
+    # --- FIN RAFFINEMENT ---
 
-    # 5b. Evaluation de la force des sources scripturaires (Coran/Hadith)
+    # 5b. Evaluation de la force des sources scripturaires (Coran/Hadith/Sira)
     has_strong_scripture = any(
-        c["type"] in ["quran", "hadith"] and c.get("semantic_score", 0) > 0.4
+        c["type"] in ["quran", "hadith", "seerah"] and c.get("semantic_score", 0) > 0.4
         for c in initial_top_chunks
     )
     
-    if not has_strong_scripture:
+    if not has_strong_scripture and initial_top_chunks:
         from app.db.vector_store import _search_fatwa_entries
         print("DEBUG: Fallback to Fatwa search (Scriptural scores too low)")
         fatwa_matches = _search_fatwa_entries(query=english_query, top_k=2)
         if fatwa_matches:
-            # On preserve les sources scripturaires (Quran/Hadith) deja trouvees meme si faibles
-            scriptures = [c for c in initial_top_chunks if c["type"] in ["quran", "hadith"]]
+            # On preserve les sources scripturaires deja trouvees meme si faibles
+            scriptures = [c for c in initial_top_chunks if c["type"] in ["quran", "hadith", "seerah"]]
             # On complete avec les fatwas pour arriver a 3
             initial_top_chunks = (scriptures + fatwa_matches)[:3]
-            # On retrie pour la forme
+            # On retrie pour la forme (Sira prioritisee pour identification)
             initial_top_chunks = _sort_chunks_by_priority(initial_top_chunks)
+    
+    # 5c. Priorisation BIOGRAPHIQUE finale si intention idenfication
+    if _detect_intent(normalized_q) == "identification":
+        initial_top_chunks = sorted(initial_top_chunks, key=lambda c: 1 if c["type"] == "seerah" else 2)
 
     # 6. Couplage Automatique Verset -> Tafsir (Enrichissement)
     final_display_chunks = []

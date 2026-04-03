@@ -1,28 +1,31 @@
-- [x] Renforcement Résilience & UX Premium
-- [ ] Renforcement de la Rigueur RAG (Anti-Hallucination)
-    - [ ] Durcir les prompts biographiques dans `rag_pipeline.py`
-    - [ ] Améliorer le pruning lexical pour les données chiffrées
-    - [ ] Implémenter la vérification de cohérence "Chiffres Réponse vs Sources"
-    - [ ] Tester avec la question sur l'âge du mariage de Khadija
+- [x] Renforcement de la Rigueur RAG (Anti-Hallucination)
+    - [x] Durcir les prompts biographiques dans `rag_pipeline.py`
+    - [x] Améliorer le pruning lexical pour les données chiffrées
+    - [x] Implémenter la vérification de cohérence "Chiffres Réponse vs Sources"
+    - [x] Tester avec la question sur l'âge du mariage de Khadija
 - [x] Résolution Production 502 & Unification
-    - [ ] Corriger `backend/app/core/exceptions.py` (Code 502 -> 503)
-    - [ ] Déplacer `app/routers/admin.py` vers `app/routes/admin.py`
-    - [ ] Supprimer le dossier redondant `app/routers/`
-    - [ ] Mettre à jour les imports dans `backend/app/main.py`
-    - [ ] Push Git pour déclencher le déploiement Railway
+    - [x] Corriger `backend/app/core/exceptions.py` (Code 502 -> 503)
+    - [x] Déplacer `app/routers/admin.py` vers `app/routes/admin.py`
+    - [x] Supprimer le dossier redondant `app/routers/`
+    - [x] Mettre à jour les imports dans `backend/app/main.py`
+    - [x] Push Git pour déclencher le déploiement Railway
 - [x] Audit de Sécurité Admin (V2)
-    - [ ] Créer le script de pénétration `backend/tests/security/admin_penetration_test.py`
-    - [ ] Exécuter les tests d'intrusion (Black-Box & Logic)
-    - [ ] Générer le rapport final `analyse_securite/security_report_admin.md`
+    - [x] Créer le script de pénétration `analyse_securite/security/admin_penetration_test.py`
+    - [x] Exécuter les tests d'intrusion (Black-Box & Logic)
+    - [x] Générer le rapport final `analyse_securite/security_report_admin.md`
 - [x] Refonte Esthétique de la Discussion
-    - [ ] Mettre à jour `frontend/src/style.css` (Styles de bulles)
-    - [ ] Ajuster l'alignement dans `frontend/src/pages/ChatPage.jsx`
+    - [x] Mettre à jour `frontend/src/style.css` (Styles de bulles)
+    - [x] Ajuster l'alignement dans `frontend/src/pages/ChatPage.jsx`
 - [x] Mise en place du Système d'Exceptions
     - [x] Créer `backend/app/core/exceptions.py` (Classes custom)
     - [x] Créer `backend/app/core/error_handlers.py` (Moteur de réponse)
     - [x] Intégrer les handlers dans `backend/app/main.py`
+- [x] Nettoyage et Raffinement Final
+    - [x] Supprimer la pollution "Est-ce interdit?" dans `llm.py`
+    - [x] Implémenter le "Confidence Filter" RAG (Anti-bruit)
+    - [x] Prioriser la Sira pour les questions d'identification
 - [x] Migration des Services
     - [x] Mettre à jour `backend/app/services/embeddings.py`
     - [x] Mettre à jour `backend/app/services/feedback.py`
-- [ ] Vérification du format JSON des erreurs
-- [ ] Création du walkthrough final
+- [x] Vérification du format JSON des erreurs
+- [x] Création du walkthrough final

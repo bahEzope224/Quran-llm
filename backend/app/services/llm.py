@@ -250,10 +250,9 @@ def translate_text_to_french(text: str, force: bool = False) -> str:
     print(f"DEBUG: [TRANS] Tentative de traduction ({len(source_text)} chars)...")
 
     prompt = (
-        "Translate to French. ONLY output the translation. NO notes. NO preamble. NO context.\n"
-        "Example Input: Is it forbidden?\n"
-        "Example Output: Est-ce interdit?\n\n"
-        f"Translate: {source_text}"
+        "Translate the following English text to French accurately.\n"
+        "RULES: Output ONLY the translated text. NO notes, NO preamble, NO surrounding quotes.\n\n"
+        f"Text to translate: {source_text}"
     )
 
     # Utiliser le modele de traduction dedie (plus leger/rapide)

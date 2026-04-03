@@ -6,6 +6,7 @@ from app.db.datasets_loader import (
     load_hadith_datasets,
     load_ibn_kathir_tafsir_dataset,
     load_islamqa_dataset,
+    load_seerah_dataset,
 )
 
 
@@ -612,6 +613,50 @@ def _search_fatwa_entries(query: str, top_k: int) -> list[dict[str, str]]:
     ]
 
 
+def _search_seerah_entries(query: str, top_k: int) -> list[dict[str, str]]:
+    dataset = load_seerah_dataset()
+    if not dataset:
+        return []
+
+    features = _build_query_features(query)
+    if not features["tokens"]:
+        return []
+
+    matches = []
+    for item in dataset:
+        searchable_text = f"{item['title']} {item['content']} {item['category']}"
+        score = _score_text_match(features, searchable_text, "seerah")
+        if score > 0:
+            matches.append(
+                {
+                    "type": "seerah",
+                    "source": "Prophetic Biography (Seerah)",
+                    "ref": item["id"],
+                    "content": item["content"],
+                    "tags": _infer_tags(
+                        ref=item["id"],
+                        source="Seerah",
+                        content=item["title"] + " " + item["content"],
+                        source_type="seerah",
+                    ),
+                    "score": score,
+                }
+            )
+
+    matches.sort(key=lambda item: item["score"], reverse=True)
+    return [
+        {
+            "type": item["type"],
+            "source": item["source"],
+            "ref": item["ref"],
+            "content": item["content"],
+            "tags": item["tags"],
+            "lexical_score": item["score"],
+        }
+        for item in matches[:top_k]
+    ]
+
+
 def search_similar_chunks(
     query: str,
     embedding: list[float] | None,
@@ -619,12 +664,13 @@ def search_similar_chunks(
 ) -> list[dict[str, str]]:
     """Preselction lexicale pour alimenter le reranking semantique."""
     quran_matches = _search_quran_verses(query=query, top_k=top_k)
+    seerah_matches = _search_seerah_entries(query=query, top_k=top_k)
     tafsir_matches = _search_tafsir_entries(query=query, top_k=top_k)
     hadith_matches = _search_hadith_entries(query=query, top_k=top_k)
     fatwa_matches = _search_fatwa_entries(query=query, top_k=top_k)
     _ = query, embedding
     dynamic_chunks = []
-    source_lists = [quran_matches, hadith_matches, tafsir_matches, fatwa_matches]
+    source_lists = [quran_matches, seerah_matches, hadith_matches, tafsir_matches, fatwa_matches]
     source_index = 0
 
     while len(dynamic_chunks) < top_k and any(source_lists):

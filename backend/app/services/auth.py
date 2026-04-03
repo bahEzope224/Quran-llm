@@ -1,5 +1,6 @@
 import json
 import requests
+import time
 from jose import jwt, JWTError
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -12,10 +13,23 @@ ADMIN_EMAIL = "contact@ibrahima-bah.com"
 
 security = HTTPBearer()
 
+# Cache global pour les cles publiques de Clerk
+_JWKS_CACHE = None
+
 def get_jwks():
-    """Recupere les cles publiques de Clerk."""
-    response = requests.get(JWKS_URL)
-    return response.json()
+    """Recupere les cles publiques de Clerk avec mise en cache brute."""
+    global _JWKS_CACHE
+    if _JWKS_CACHE:
+        return _JWKS_CACHE
+    
+    try:
+        response = requests.get(JWKS_URL, timeout=5)
+        response.raise_for_status()
+        _JWKS_CACHE = response.json()
+        return _JWKS_CACHE
+    except Exception as e:
+        print(f"CRITICAL ERROR (Auth): Impossible de recuperer les cles JWKS : {e}")
+        return {"keys": []}
 
 async def get_current_admin(auth: HTTPAuthorizationCredentials = Depends(security)):
     """Verifie le token JWT Clerk et l'identite de l'admin."""
@@ -68,13 +82,14 @@ async def get_current_admin(auth: HTTPAuthorizationCredentials = Depends(securit
 
     except JWTError as e:
         raise AuthException(
-            message=f"Token invalide ou expire : {str(e)}",
+            message=f"Session invalide ou expiree : {str(e)}",
             location="auth_service.get_current_admin"
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur d'authentification serveur : {str(e)}"
+        # On ne renvoie plus d'HTTPException brut pour preserver les headers CORS
+        raise AuthException(
+            message=f"Erreur interne de securite : {str(e)}",
+            location="auth_service.get_current_admin"
         )
 
     raise AuthException(

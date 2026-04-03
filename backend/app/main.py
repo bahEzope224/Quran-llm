@@ -23,6 +23,20 @@ app = FastAPI(
 app.add_exception_handler(Exception, global_exception_handler)
 app.add_exception_handler(BaseAppException, app_exception_handler)
 
+# Ajout du handler pour les exceptions natives de FastAPI pour injecter CORS
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    from fastapi.responses import JSONResponse
+    origin = request.headers.get("origin")
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail, "error": True, "type": "HTTPException"},
+        headers={
+            "Access-Control-Allow-Origin": origin if origin else "*",
+            "Access-Control-Allow-Credentials": "true" if origin else "false"
+        }
+    )
+
 # Nettoyage des origines pour eviter les espaces ou slashs parasites
 allowed_origins = [o.strip().rstrip("/") for o in settings.frontend_origins if o.strip()]
 

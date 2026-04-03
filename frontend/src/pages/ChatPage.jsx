@@ -543,30 +543,32 @@ export default function ChatPage() {
         </div>
 
         <div className="top-bar-center">
-          {activeScreen === 'chat' ? (
-            <div className="view-toggle" aria-label="Changer de mode de reponse">
-              <button
-                className={`toggle-pill ${activeView === 'response' ? 'active' : ''}`}
-                type="button"
-                onClick={() => setActiveView('response')}
-              >
-                Reponse
-              </button>
-              <button
-                className={`toggle-pill ${activeView === 'proofs' ? 'active' : ''}`}
-                type="button"
-                onClick={() => setActiveView('proofs')}
-              >
-                Preuves
-              </button>
-            </div>
-          ) : (
+          {activeScreen !== 'chat' && (
             <span className="profile-header-label">Mon profil</span>
           )}
         </div>
 
         <div className="top-bar-right">
           <div className="top-bar-actions">
+            {activeScreen === 'chat' && (
+              <div className="view-toggle" aria-label="Changer de mode de reponse">
+                <button
+                  className={`toggle-pill ${activeView === 'response' ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => setActiveView('response')}
+                >
+                  Reponse
+                </button>
+                <button
+                  className={`toggle-pill ${activeView === 'proofs' ? 'active' : ''}`}
+                  type="button"
+                  onClick={() => setActiveView('proofs')}
+                >
+                  Preuves
+                </button>
+              </div>
+            )}
+            
             <button
               className={`icon-button profile-button ${activeScreen === 'profile' ? 'active' : ''}`}
               type="button"

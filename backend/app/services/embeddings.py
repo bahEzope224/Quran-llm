@@ -3,6 +3,7 @@ import math
 from urllib import error, request
 
 from app.config import settings
+from app.core.exceptions import LLMException
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
@@ -49,8 +50,12 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
             if hasattr(e, 'read'):
                 try: error_body = e.read().decode("utf-8")
                 except: pass
-            print(f"ERROR in generate_embeddings batch {i}: {str(e)} | Body: {error_body}")
-            continue
+            
+            raise LLMException(
+                message=f"Erreur lors de la generation des embeddings (Batch {i})",
+                location="embeddings_service.generate_embeddings",
+                details={"original_error": str(e), "error_body": error_body}
+            )
 
     return [
         [float(value) for value in embedding]

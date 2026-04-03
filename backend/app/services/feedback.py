@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from app.models.schemas import FeedbackRequest
+from app.core.exceptions import BaseAppException, ResourceNotFoundException
 
 logger = logging.getLogger(__name__)
 
@@ -37,5 +38,8 @@ def save_feedback(payload: FeedbackRequest) -> bool:
         return True
 
     except Exception as e:
-        logger.error(f"Erreur lors de l'enregistrement du feedback: {e}")
-        return False
+        raise BaseAppException(
+            message="Impossible d'enregistrer votre retour d'experience.",
+            location="feedback_service.save_feedback",
+            details={"original_error": str(e), "file": str(FEEDBACK_FILE)}
+        )

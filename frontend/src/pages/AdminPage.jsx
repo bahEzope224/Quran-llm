@@ -1,4 +1,4 @@
-import { useUser } from '@clerk/react';
+import { useUser, useAuth } from '@clerk/react';
 import { useEffect, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { 
@@ -18,6 +18,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000
 
 export default function AdminPage() {
   const { isLoaded, isSignedIn, user } = useUser();
+  const { getToken } = useAuth();
   const [stats, setStats] = useState(null);
   const [feedbacks, setFeedbacks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,10 +35,13 @@ export default function AdminPage() {
 
     const fetchData = async () => {
       try {
+        const token = await getToken();
+        const headers = { 'Authorization': `Bearer ${token}` };
+        
         const [statsRes, feedbackRes, historyRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/admin/stats`),
-          fetch(`${API_BASE_URL}/admin/feedbacks`),
-          fetch(`${API_BASE_URL}/admin/history`)
+          fetch(`${API_BASE_URL}/admin/stats`, { headers }),
+          fetch(`${API_BASE_URL}/admin/feedbacks`, { headers }),
+          fetch(`${API_BASE_URL}/admin/history`, { headers })
         ]);
 
         if (statsRes.ok) setStats(await statsRes.json());
@@ -57,8 +61,10 @@ export default function AdminPage() {
     if (!window.confirm('Voulez-vous vraiment supprimer ce feedback ?')) return;
 
     try {
+      const token = await getToken();
       const res = await fetch(`${API_BASE_URL}/admin/feedback/${timestamp}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         setFeedbacks(prev => prev.filter(f => f.timestamp !== timestamp));

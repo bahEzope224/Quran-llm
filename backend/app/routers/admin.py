@@ -2,8 +2,15 @@ import json
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
 from app.models.schemas import FeedbackRequest
+from app.core.exceptions import ResourceNotFoundException, AuthException
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+from app.services.auth import get_current_admin
+
+router = APIRouter(
+    prefix="/admin", 
+    tags=["admin"],
+    dependencies=[Depends(get_current_admin)]
+)
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 FEEDBACK_FILE = DATA_DIR / "feedback.jsonl"
@@ -65,7 +72,10 @@ async def get_history():
 async def delete_feedback(timestamp: str):
     """Supprime un feedback par son timestamp."""
     if not FEEDBACK_FILE.exists():
-        raise HTTPException(status_code=404, detail="Fichier non trouve")
+        raise ResourceNotFoundException(
+            message="Le catalogue des feedbacks n'est pas encore genere.",
+            location="admin_router.delete_feedback"
+        )
     
     found = False
     temp_records = []
@@ -78,7 +88,10 @@ async def delete_feedback(timestamp: str):
             temp_records.append(record)
     
     if not found:
-        raise HTTPException(status_code=404, detail="Feedback non trouve")
+        raise ResourceNotFoundException(
+            message=f"Impossible de trouver le feedback avec le timestamp {timestamp}.",
+            location="admin_router.delete_feedback"
+        )
         
     with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
         for rec in temp_records:

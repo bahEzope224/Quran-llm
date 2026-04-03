@@ -10,11 +10,18 @@ from app.routes.user import router as user_router
 from app.routers.admin import router as admin_router
 
 
+from app.core.exceptions import BaseAppException
+from app.core.error_handlers import global_exception_handler, app_exception_handler
+
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description=settings.app_description,
 )
+
+# Handlers d'erreurs
+app.add_exception_handler(Exception, global_exception_handler)
+app.add_exception_handler(BaseAppException, app_exception_handler)
 
 app.add_middleware(
     CORSMiddleware,

@@ -63,16 +63,21 @@ async def get_current_admin(auth: HTTPAuthorizationCredentials = Depends(securit
             # Verification de l'identite administrateur
             # Clerk stocke l'email dans la claim 'email' si configuree dans le template JWT
             email = payload.get("email")
+            user_id = payload.get("sub") # Toujours present dans Clerk
             
             if not email:
-                # Fallback : Si l'email n'est pas dans le token, on peut verifier d'autres claims
-                # ou demander a l'utilisateur de l'ajouter a son template JWT Clerk
+                # Log interne pour Railway (visible uniquement par vous dans la console)
+                keys_found = list(payload.keys())
+                print(f"DEBUG (Auth): ID Utilisateur: {user_id} | Champs presents: {keys_found}")
+                
+                # Le message d'erreur est renvoye au frontend pour diagnostic
                 raise AuthException(
-                    message="Acces refuse : Email non trouve dans le token. Verifiez votre configuration Clerk.",
+                    message=f"Acces refuse : Email non trouve dans le token. Champs dans votre template Clerk: {keys_found}. Verifiez votre configuration JWT.",
                     location="auth_service.get_current_admin"
                 )
             
             if email != ADMIN_EMAIL:
+                print(f"DEBUG (Auth): Tentative acces par {email} au lieu de {ADMIN_EMAIL}")
                 raise AuthException(
                     message=f"Acces refuse : {email} n'est pas autorise.",
                     location="auth_service.get_current_admin"

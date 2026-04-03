@@ -1,10 +1,5 @@
 **✅ Checklist complète avant le lancement de Quran-LLM**
 
-Voici la **checklist professionnelle** que tu dois remplir avant de lancer publiquement ton projet.  
-Elle est adaptée à un projet **RAG + IA religieux** (Coran & Hadiths) et tient compte de l’état actuel de ton repo (backend bien avancé, frontend placeholder, Dockerfile + railway.json présents, README déjà excellent).
-
-Tu peux copier-coller cette checklist directement dans un fichier `CHECKLIST.md` ou dans les **Projects** GitHub.
-
 ### 1. Repository GitHub & Premiers Pas (obligatoire)
 
 - [ ] **Description du repo** : Ajoute une description claire (ex. : « Assistant IA RAG pour le Saint Coran et les Hadiths »)

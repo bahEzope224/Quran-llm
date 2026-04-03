@@ -430,13 +430,22 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     # 5. Filtrage thématique (TOP 3 initial)
     initial_top_chunks = _filter_chunks_for_topic(payload=payload, chunks=pruned_chunks)
     
-    # --- RAFFINEMENT DE CONFIANCE (Anti-Bruit) ---
+    # --- RAFFINEMENT DE CONFIANCE (Anti-Bruit radical) ---
     if initial_top_chunks:
         best_score = initial_top_chunks[0].get("semantic_score", 0)
-        # Si on a un match parfait (score > 0.85), on elague le bruit secondaire (on ne garde que 1 ou 2 sources max)
-        if best_score > 0.85:
-            print(f"DEBUG: Perfect Match found (Score: {best_score}). Reducing context noise.")
-            initial_top_chunks = initial_top_chunks[:2]
+        # 1. Seuil Absolu (Match Parfait) : Abaisse a 0.75 pour capturer la Sira
+        if best_score > 0.75:
+            print(f"DEBUG: High Confidence Match (Score: {best_score}). Trimming noise.")
+            # 2. Seuil Relatif : Si la 2eme source est nettement moins bonne, on ne garde QUE la 1ere
+            if len(initial_top_chunks) > 1:
+                second_score = initial_top_chunks[1].get("semantic_score", 0)
+                if (best_score - second_score) > 0.2:
+                    print(f"DEBUG: Large gap detected ({best_score} vs {second_score}). Source 1 only.")
+                    initial_top_chunks = initial_top_chunks[:1]
+                else:
+                    initial_top_chunks = initial_top_chunks[:2]
+            else:
+                initial_top_chunks = initial_top_chunks[:1]
         else:
             initial_top_chunks = initial_top_chunks[:3]
     # --- FIN RAFFINEMENT ---

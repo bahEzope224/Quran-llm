@@ -51,8 +51,13 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
                 try: error_body = e.read().decode("utf-8")
                 except: pass
             
+            # Diagnostic ameliore pour la production
+            msg = f"Erreur lors de la generation des embeddings (Batch {i})"
+            if "127.0.0.1" in settings.embeddings_base_url and isinstance(e, error.URLError):
+                msg += ". NOTE: Le service local (127.0.0.1) est injoignable. Si vous êtes en production (Railway), vérifiez vos variables d'environnement EMBEDDINGS_BASE_URL."
+
             raise LLMException(
-                message=f"Erreur lors de la generation des embeddings (Batch {i})",
+                message=msg,
                 location="embeddings_service.generate_embeddings",
                 details={"original_error": str(e), "error_body": error_body}
             )

@@ -1,4 +1,9 @@
-- [ ] Résolution Production 502 & Unification
+- [ ] Renforcement Résilience & UX Premium
+    - [ ] Enrichir le diagnostic dans `backend/app/services/embeddings.py`
+    - [ ] Styliser les bulles d'erreur dans `frontend/src/style.css`
+    - [ ] Gérer l'affichage des erreurs dans `frontend/src/pages/ChatPage.jsx`
+    - [ ] Déclatrer les nouvelles variables d'environnement sur Railway (Conseil)
+- [x] Résolution Production 502 & Unification
     - [ ] Corriger `backend/app/core/exceptions.py` (Code 502 -> 503)
     - [ ] Déplacer `app/routers/admin.py` vers `app/routes/admin.py`
     - [ ] Supprimer le dossier redondant `app/routers/`

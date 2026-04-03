@@ -322,7 +322,7 @@ export default function ChatPage() {
     updateConversation(currentConversationId, updater);
   }
 
-  function finalizeAssistantMessage(messageId, finalAnswer, finalSources) {
+  function finalizeAssistantMessage(messageId, finalAnswer, finalSources, errorId = null) {
     updateActiveConversation((conversation) => ({
       ...conversation,
       messages: conversation.messages.map((message) =>
@@ -333,6 +333,7 @@ export default function ChatPage() {
               displayedAnswer: finalAnswer,
               sources: finalSources,
               isComplete: true,
+              error_id: errorId,
             }
           : message
       ),
@@ -493,7 +494,12 @@ export default function ChatPage() {
       });
 
       if (!response.ok) {
-        throw new Error('chat_request_failed');
+        const errorData = await response.json().catch(() => ({}));
+        const err = new Error('chat_request_failed');
+        err.error_id = errorData.error_id;
+        err.status = response.status;
+        err.message = errorData.message || 'Le serveur est indisponible.';
+        throw err;
       }
 
       const data = await response.json();
@@ -501,19 +507,13 @@ export default function ChatPage() {
       setIsLoadingChat(false);
       abortControllerRef.current = null;
       animateAssistantAnswer(assistantMessage.id, data.answer, data.sources);
-    } catch {
-      const wasAborted = abortControllerRef.current?.signal.aborted;
-      abortControllerRef.current = null;
-      setIsLoadingChat(false);
-      if (wasAborted) {
-        return;
-      }
-
-      setChatError('Le serveur ILM AI est temporairement indisponible. Veuillez verifier votre connexion ou reessayer plus tard.');
+    } catch (err) {
+      setChatError('');
       finalizeAssistantMessage(
         assistantMessage.id, 
-        "Désolé, je ne peux pas répondre pour le moment car le serveur de recherche est hors ligne. Veuillez réessayer dans quelques instants.", 
-        []
+        err.message || "Désolé, je ne peux pas répondre pour le moment car le serveur de recherche est hors ligne. Veuillez réessayer dans quelques instants.", 
+        [],
+        err.error_id
       );
     }
   }
@@ -698,7 +698,30 @@ export default function ChatPage() {
 
                   return (
                     <div key={message.id} className="assistant-stack message-enter">
-                      {activeView === 'response' ? (
+                      {message.error_id ? (
+                        <div className="error-message-row">
+                          <div className="error-bubble">
+                            <div className="error-header">
+                              <span className="material-symbols-outlined">report</span>
+                              <span>Perturbation Technique</span>
+                            </div>
+                            <p className="error-text">{message.displayedAnswer || message.answer}</p>
+                            <div className="error-footer">
+                              <span>Identifiant d'incident :</span>
+                              <span 
+                                className="error-id-tag" 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(message.error_id);
+                                  alert("ID de l'erreur copié !");
+                                }}
+                                title="Copier l'ID"
+                              >
+                                {message.error_id}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : activeView === 'response' ? (
                         <>
                           <article className="assistant-response-card">
                             <div className="assistant-card-header">

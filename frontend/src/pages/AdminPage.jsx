@@ -24,11 +24,14 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
-  // Securite : Seul l'email contact@ibrahima-bah.com peut acceder a cette page
-  const isAdmin = user?.primaryEmailAddress?.emailAddress === 'contact@ibrahima-bah.com';
+  // Securite : Email officiel ou ID de secours autorise
+  const isAdmin = user?.primaryEmailAddress?.emailAddress === 'contact@ibrahima-bah.com' || 
+                  user?.id === 'user_3Bq0yMWF3aREEtrg18HaJEjealk';
 
   const [history, setHistory] = useState([]);
+  const [bugLog, setBugLog] = useState([]);
   const [selectedResponse, setSelectedResponse] = useState(null);
+  const [selectedBug, setSelectedBug] = useState(null);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !isAdmin) return;
@@ -38,15 +41,17 @@ export default function AdminPage() {
         const token = await getToken();
         const headers = { 'Authorization': `Bearer ${token}` };
         
-        const [statsRes, feedbackRes, historyRes] = await Promise.all([
+        const [statsRes, feedbackRes, historyRes, bugsRes] = await Promise.all([
           fetch(`${API_BASE_URL}/admin/stats`, { headers }),
           fetch(`${API_BASE_URL}/admin/feedbacks`, { headers }),
-          fetch(`${API_BASE_URL}/admin/history`, { headers })
+          fetch(`${API_BASE_URL}/admin/history`, { headers }),
+          fetch(`${API_BASE_URL}/admin/bugs`, { headers })
         ]);
 
         if (statsRes.ok) setStats(await statsRes.json());
         if (feedbackRes.ok) setFeedbacks(await feedbackRes.json());
         if (historyRes.ok) setHistory(await historyRes.json());
+        if (bugsRes.ok) setBugLog(await bugsRes.json());
       } catch (error) {
         console.error('Erreur lors du chargement des donnees admin:', error);
       } finally {
@@ -210,7 +215,7 @@ export default function AdminPage() {
               </div>
             </article>
           </section>
-
+ 
           {/* Feedback List */}
           <section className="feedback-section container-card">
             <header className="section-header">
@@ -236,7 +241,7 @@ export default function AdminPage() {
                 </button>
               </div>
             </header>
-
+ 
             <div className="feedback-table-wrapper">
               <table className="feedback-table">
                 <thead>
@@ -290,6 +295,74 @@ export default function AdminPage() {
               </table>
             </div>
           </section>
+ 
+          {/* Maintenance / Bug Log Section */}
+          <section className="feedback-section container-card" style={{ marginTop: '2rem' }}>
+            <header className="section-header">
+              <h2>Journal de Maintenance</h2>
+              <span className="status-pill up" style={{ fontSize: '0.8rem' }}>Système Stable v0.8.0</span>
+            </header>
+            
+            <div className="feedback-table-wrapper">
+              <table className="feedback-table">
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                    <th>Bug / Incident</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bugLog.map((bug, idx) => (
+                    <tr key={idx} className="bug-row">
+                      <td className="col-date"><strong>{bug.version}</strong></td>
+                      <td className="col-question">
+                        <div className="bug-title-cell">
+                          <span className="bug-id-tag">{bug.id}</span>
+                          {bug.bug}
+                        </div>
+                      </td>
+                      <td className="col-date">{new Date(bug.date).toLocaleDateString()}</td>
+                      <td className="col-view">
+                        <button 
+                          className="view-answer-btn secondary"
+                          onClick={() => setSelectedBug(bug)}
+                        >
+                          Détails Solution
+                        </button>
+                      </td>
+                      <td className="col-status">
+                        <span className="status-pill up">Résolu</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+ 
+          {/* Modal Bug Detail */}
+          {selectedBug && (
+            <div className="admin-modal-overlay" onClick={() => setSelectedBug(null)}>
+              <div className="admin-modal" onClick={e => e.stopPropagation()}>
+                <header className="modal-header">
+                  <h3>Incident {selectedBug.id} - {selectedBug.version}</h3>
+                  <button onClick={() => setSelectedBug(null)} className="close-modal">×</button>
+                </header>
+                <div className="modal-body">
+                  <p><strong>Incident :</strong> {selectedBug.bug}</p>
+                  <p><strong>Cause Racine :</strong> {selectedBug.cause}</p>
+                  <hr />
+                  <div className="solution-box">
+                    <p><strong>🚀 Solution Implémentée :</strong></p>
+                    <p>{selectedBug.solution}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </main>

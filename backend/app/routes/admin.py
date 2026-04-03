@@ -14,6 +14,7 @@ router = APIRouter(
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 FEEDBACK_FILE = DATA_DIR / "feedback.jsonl"
+BUG_FILE = DATA_DIR / "bug_log.json"
 
 def get_all_feedbacks():
     """Recupere tous les feedbacks du fichier JSONL sans risquer de crash 500."""
@@ -56,6 +57,19 @@ async def get_stats():
 async def list_feedbacks():
     """Liste detaillee des feedbacks."""
     return get_all_feedbacks()
+
+@router.get("/bugs")
+async def list_bugs():
+    """Recupere le journal de maintenance (Bug Log)."""
+    if not BUG_FILE.exists():
+        return []
+    try:
+        with open(BUG_FILE, "r", encoding="utf-8") as f:
+            import json
+            return json.load(f)
+    except Exception as e:
+        print(f"CRITICAL ERROR (Admin): Impossible de lire {BUG_FILE}: {e}")
+        return []
 
 @router.get("/history")
 async def get_history():

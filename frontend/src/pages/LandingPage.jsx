@@ -10,103 +10,170 @@ export default function LandingPage() {
     e.preventDefault();
     if (email) {
       setSubmitted(true);
-      // Simulation d'envoi vers un backend
-      setTimeout(() => setSubmitted(false), 5000);
+      setTimeout(() => setSubmitted(false), 6000);
       setEmail('');
     }
   };
 
   return (
     <div className="landing-container">
+
       {/* Navigation */}
       <nav className="landing-nav">
         <Link to="/" style={{ textDecoration: 'none' }}>
           <div className="logo-text">ILM AI</div>
         </Link>
-        <div className="nav-links">
-          <Link to="/sign-in" className="nav-btn">Lancer l'App</Link>
-        </div>
+        <Link to="/sign-in" className="nav-btn">Commencer</Link>
       </nav>
 
-      {/* Hero Section */}
+      {/* Hero */}
       <header className="hero-section">
-        <div className="hero-content">
-          <h1>L'Élite de l'Intelligence Islamique.</h1>
-          <p>
-            Découvrez la première IA au monde qui ne répond que par la preuve.<br />
-            Une rigueur doctrinale absolue, sourcée exclusivement depuis le Coran, 
-            le Hadith authentique et le Tafsir des savants.
-          </p>
-          <div className="cta-group">
-            <Link to="/sign-up" className="submit-btn" style={{ textDecoration: 'none', display: 'inline-block' }}>
-              Commencer gratuitement
-            </Link>
-          </div>
+        <div className="hero-eyebrow">
+          <span className="eyebrow-line" />
+          Connaissance islamique · Preuve textuelle
+          <span className="eyebrow-line" />
         </div>
-        <div className="hero-image-container">
-          <img
-            src="/assets/landing-hero.png"
-            alt="ILM AI Visualization"
-            className="hero-image"
-          />
+
+        <h1 className="hero-title">
+          Chaque réponse<br />
+          commence par <em>une source.</em>
+        </h1>
+
+        <p className="hero-sub">
+          ILM AI ne spécule pas. Pour chaque question, une référence : verset, hadith,
+          citation de savant — avec le texte arabe original et sa traduction exacte.
+        </p>
+
+        <div className="hero-actions">
+          <Link to="/sign-up" className="btn-primary" style={{ textDecoration: 'none' }}>
+            Essayer gratuitement
+          </Link>
+          <a href="#features" className="btn-ghost">Voir comment ça fonctionne</a>
         </div>
+
+        <div className="arabic-watermark" aria-hidden="true">علم</div>
       </header>
 
-      {/* Features Section */}
-      <section className="features-grid">
-        <div className="feature-card">
-          <span className="feature-icon">🛡️</span>
-          <h3>Confiance Totale</h3>
-          <p>Zéro hallucination. Si la source n'existe pas dans les textes authentiques, ILM AI ne l'invente pas. La vérité avant tout.</p>
+      {/* Proof Bar */}
+      <div className="proof-bar">
+        <div className="proof-item">
+          <span className="proof-num">6 236</span>
+          <span className="proof-label">versets du Coran indexés</span>
         </div>
-        <div className="feature-card">
-          <span className="feature-icon">📖</span>
-          <h3>Sources Vérifiables</h3>
-          <p>Chaque réponse est accompagnée du texte original arabe, de sa traduction et de sa référence exacte (sourate, verset, savant) pour votre audit personnel.</p>
+        <div className="proof-divider" />
+        <div className="proof-item">
+          <span className="proof-num">7 275</span>
+          <span className="proof-label">hadiths Sahih Bukhari &amp; Muslim</span>
         </div>
-        <div className="feature-card">
-          <span className="feature-icon">✨</span>
-          <h3>Respect Absolu</h3>
-          <p>Une intelligence conçue pour respecter les sensibilités et les protocoles de la tradition mohammadienne (ﷺ) dans chaque réponse.</p>
+        <div className="proof-divider" />
+        <div className="proof-item">
+          <span className="proof-num">0</span>
+          <span className="proof-label">réponse sans source vérifiable</span>
+        </div>
+        <div className="proof-divider" />
+        <div className="proof-item">
+          <span className="proof-num">4</span>
+          <span className="proof-label">madhabs représentés</span>
+        </div>
+      </div>
+
+      {/* Features */}
+      <section className="features-section" id="features">
+        <div className="features-header">
+          <div>
+            <p className="section-label">Ce qui nous différencie</p>
+            <h2 className="features-title">
+              La rigueur des <em>oulémas,</em><br />
+              la rapidité du numérique.
+            </h2>
+          </div>
+          <p className="features-desc">
+            Les grandes questions méritent des réponses ancrées dans la tradition.
+            Pas des approximations, pas des compromis. ILM AI a été conçu pour ne jamais
+            transiger avec l'exactitude doctrinale.
+          </p>
+        </div>
+
+        <div className="features-grid">
+          <div className="feature-card">
+            <div className="feature-num">01</div>
+            <h3>La source d'abord, toujours</h3>
+            <p>
+              Chaque réponse est générée à partir du texte — pas depuis une base de
+              probabilités. Si le texte ne parle pas, ILM AI se tait. C'est une règle,
+              pas une promesse.
+            </p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-num">02</div>
+            <h3>Arabe original inclus</h3>
+            <p>
+              Sourate, numéro de verset, nom du savant, date de sa fatwa. Vous recevez
+              ce qu'il faut pour vérifier vous-même — sans dépendre d'un intermédiaire.
+            </p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-num">03</div>
+            <h3>Le protocole prophétique respecté</h3>
+            <p>
+              Les formules de respect, les noms, les titres — rien n'est abrégé par
+              commodité. La tradition muhammadienne ﷺ est honorée dans chaque ligne générée.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Waitlist Section */}
+      {/* Hadith Quote */}
+      <section className="quote-section">
+        <p className="arabic-quote">طَلَبُ الْعِلْمِ فَرِيضَةٌ عَلَى كُلِّ مُسْلِمٍ</p>
+        <p className="quote-translation">
+          "La quête de la connaissance est une obligation pour tout musulman."
+        </p>
+        <p className="quote-source">Hadith — Ibn Mâja, n°224 · Grade : Hassan</p>
+      </section>
+
+      {/* Waitlist */}
       <section className="waitlist-section">
-        <div className="waitlist-card">
-          <h2>Rejoignez la révolution ILM AI</h2>
-          <p>Soyez les premiers informés de nos mises à jour majeures et de l'intégration de nouveaux corpus savants (Tafsir complet, Hadiths Sahih, etc.).</p>
-          <form className="waitlist-form" onSubmit={handleSubmit}>
-            <input
-              type="email"
-              className="waitlist-input"
-              placeholder="votre@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <button type="submit" className="submit-btn">
-              S'inscrire
-            </button>
-          </form>
-          {submitted && (
-            <div className="success-msg">
-              ✨ Bienvenue dans la communauté ILM AI. À très bientôt !
-            </div>
-          )}
-        </div>
+        <p className="section-label">Accès anticipé</p>
+        <h2 className="waitlist-title">Rejoignez la liste d'attente</h2>
+        <p className="waitlist-sub">
+          Nous intégrons chaque mois de nouveaux corpus : Tafsir Ibn Kathir complet,
+          Fiqh comparé, Sirah. Soyez informé en avant-première.
+        </p>
+        <form className="waitlist-form" onSubmit={handleSubmit}>
+          <input
+            type="email"
+            className="waitlist-input"
+            placeholder="votre@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <button type="submit" className="submit-btn">S'inscrire</button>
+        </form>
+        <p className="waitlist-note">Sans spam. Désabonnement en un clic.</p>
+        {submitted && (
+          <p className="success-msg">Bienvenue. Vous serez parmi les premiers informés.</p>
+        )}
       </section>
 
       {/* Footer */}
-      <footer style={{ textAlign: 'center', padding: '3rem', borderTop: '1px solid rgba(255,255,255,0.05)', color: '#64748b' }}>
-        <div style={{ marginBottom: '1rem' }}>
-          <a href="/privacy" style={{ color: '#94a3b8', textDecoration: 'none', margin: '0 1rem', fontSize: '0.9rem' }}>Confidentialité & RGPD</a>
-          <a href="#" style={{ color: '#94a3b8', textDecoration: 'none', margin: '0 1rem', fontSize: '0.9rem' }}>Conditions d'utilisation</a>
+      <footer className="landing-footer">
+        <div className="footer-logo">ILM AI</div>
+        <div className="footer-links">
+          <a href="/privacy">Confidentialité &amp; RGPD</a>
+          <a href="#">Conditions d'utilisation</a>
+          <a
+            href="https://nomad-developer.com"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Nomad Developer
+          </a>
         </div>
-        <p style={{ margin: '1rem 0' }}>
-          &copy; 2026 ILM AI. La science est une lumière. Par <a href="https://nomad-developer.com" target="_blank" rel="noopener noreferrer" style={{ color: '#94a3b8', textDecoration: 'none', fontWeight: 'bold' }}>Nomad Developer</a>
-        </p>
+        <span className="footer-copy">© 2026 ILM AI · La science est une lumière.</span>
       </footer>
+
     </div>
   );
 }

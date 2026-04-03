@@ -105,7 +105,8 @@ def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english
         return (
             "Tu es un biographe islamique expert (3 a 5 PHRASES).\n"
             "RESUME le personnage de maniere fluide en te basant sur les SOURCES fournies.\n"
-            "RIGUEUR: N'invente AUCUNE date historique ou duree de regne absente des sources.\n\n"
+            "RIGUEUR ABSOLUE: N'invente AUCUN chiffre, age, date historique ou duree de regne absent des sources.\n"
+            "CONSIGNE DE SILENCE: Si une source parle d'un evenement (ex: mariage) mais ne donne pas l'age, dis explicitement que les sources ne precisent pas l'age.\n\n"
             f"SOURCES:\n{context_block}\n\n"
             f"QUESTION: {payload.question}\n"
             "REPONSE: "
@@ -114,6 +115,8 @@ def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english
         persona = "Tu es un assistant musulman expert, factuel et TRES CONCIS (1 a 2 phrases)."
         return (
             f"{persona}\n\n"
+            "INSTRUCTION CRITIQUE: Ne reponds qu'avec les informations PRESENTES dans les sources.\n"
+            "Si la question porte sur un chiffre (age, nombre) absent des sources, declare que l'information n'est pas disponible dans les textes fournis.\n\n"
             f"SOURCES:\n{context_block}\n\n"
             f"QUESTION: {payload.question}\n"
             "REPONSE: "
@@ -216,18 +219,17 @@ def _filter_chunks_for_topic(payload: ChatRequest, chunks: list[dict[str, str]])
 
 def _prune_irrelevant_chunks(chunks: list[dict], english_query: str) -> list[dict]:
     """Supprime les sources qui n'ont aucun rapport lexical avec la question (Securite anti-hallucination)."""
-    # Extraction des mots-cles significatifs de la question (EN)
     keywords = set(re.findall(r"\w{4,}", english_query.lower()))
     if not keywords:
         return chunks
 
     pruned = []
-    # Mots-cles de "bruit" pour les obligations (exclure les exceptions meteo/maladie si on cherche le principe)
     noise_patterns = ["rain", "mud", "slush", "houses", "fever", "travel"]
     is_obligation = any(kw in english_query.lower() for kw in ["obligatory", "mandatory", "must", "order"])
+    # Detecter si on cherche un chiffre (age, number, how many, year)
+    wants_number = any(kw in english_query.lower() for kw in ["age", "year", "how many", "how old", "number", "date"])
 
     for chunk in chunks:
-        # IMMUNITE: Le Coran n'est JAMAIS elague par ce filtre
         if chunk.get("type") == "quran":
             pruned.append(chunk)
             continue
@@ -237,7 +239,13 @@ def _prune_irrelevant_chunks(chunks: list[dict], english_query: str) -> list[dic
         # Filtre de bruit pour les Hadiths en contexte d'obligation generale
         if chunk.get("type") == "hadith" and is_obligation:
             if any(noise in content for noise in noise_patterns):
-                print(f"DEBUG: Pruning noisy Hadith {chunk['ref']} (noise detected)")
+                continue
+
+        # Si on veut un chiffre et que le chunk n'en contient aucun (regexp simple), on mefie
+        if wants_number and not re.search(r"\d+", content):
+            # On ne prune pas si le score est EXTREMEMENT eleve (fallback secu)
+            if chunk.get("semantic_score", 0) < 0.6:
+                print(f"DEBUG: Pruning chunk {chunk['ref']} because it lacks numerical data for a numerical query")
                 continue
 
         # Si le score est tres eleve, on garde (confiance semantique)
@@ -245,7 +253,7 @@ def _prune_irrelevant_chunks(chunks: list[dict], english_query: str) -> list[dic
             pruned.append(chunk)
             continue
             
-        # Sinon, verification de presence de mots-cles (au moins un mot de 4+ lettres commun)
+        # Sinon, verification de presence de mots-cles
         if any(kw in content for kw in keywords):
             pruned.append(chunk)
             

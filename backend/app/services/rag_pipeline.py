@@ -430,20 +430,41 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     # 5. Filtrage thématique (TOP 3 initial)
     initial_top_chunks = _filter_chunks_for_topic(payload=payload, chunks=pruned_chunks)
     
-    # --- RAFFINEMENT DE CONFIANCE (Anti-Bruit radical) ---
+    # --- RAFFINEMENT DE CONFIANCE (Anti-Bruit radical avec Entity Lock) ---
     if initial_top_chunks:
         best_score = initial_top_chunks[0].get("semantic_score", 0)
-        # 1. Seuil Absolu (Match Parfait) : Abaisse a 0.75 pour capturer la Sira
+        
+        # Identification des noms propres cités (Entity Detection simple)
+        entities = ["khadija", "aisha", "aysha", "khadijah", "fatima", "maryam", "assia", "asiya", "muhammad"]
+        query_entities = [e for e in entities if e in payload.question.lower()]
+        
         if best_score > 0.75:
-            print(f"DEBUG: High Confidence Match (Score: {best_score}). Trimming noise.")
-            # 2. Seuil Relatif : Si la 2eme source est nettement moins bonne, on ne garde QUE la 1ere
+            print(f"DEBUG: High Confidence Match (Score: {best_score}). Applying Entity-Aware Trimming.")
+            
             if len(initial_top_chunks) > 1:
-                second_score = initial_top_chunks[1].get("semantic_score", 0)
-                if (best_score - second_score) > 0.2:
-                    print(f"DEBUG: Large gap detected ({best_score} vs {second_score}). Source 1 only.")
-                    initial_top_chunks = initial_top_chunks[:1]
-                else:
-                    initial_top_chunks = initial_top_chunks[:2]
+                new_top = [initial_top_chunks[0]]
+                gap_threshold = 0.2
+                
+                # On verifie si le meilleur resultat contient deja les noms cites
+                best_content = (initial_top_chunks[0].get("content", "") + " " + initial_top_chunks[0].get("source", "")).lower()
+                best_has_entity = any(ent in best_content for ent in query_entities)
+                
+                for i in range(1, len(initial_top_chunks)):
+                    chunk = initial_top_chunks[i]
+                    score = chunk.get("semantic_score", 0)
+                    content = (chunk.get("content", "") + " " + chunk.get("source", "")).lower()
+                    
+                    # ENTITY LOCK: Si la source contient un nom cite mais pas la n°1, on la GARDE
+                    # meme si l'ecart est important (Indispensable pour Khadija vs Aisha)
+                    has_locked_entity = any(ent in content for ent in query_entities)
+                    
+                    if (best_score - score) < gap_threshold or (has_locked_entity and not best_has_entity):
+                        # On garde si c'est assez proche OU si ca contient l'entite manquante
+                        new_top.append(chunk)
+                    else:
+                        # Trop loin et sans entite critique, on arrete
+                        break
+                initial_top_chunks = new_top
             else:
                 initial_top_chunks = initial_top_chunks[:1]
         else:

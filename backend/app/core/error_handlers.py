@@ -12,6 +12,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     if hasattr(request.state, "user"):
         user_id = getattr(request.state.user, "id", user_id)
 
+    origin = request.headers.get("origin")
+    
     # Formatage de la reponse avec headers CORS de secours pour diagnostic frontend
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -24,8 +26,8 @@ async def global_exception_handler(request: Request, exc: Exception):
             "user_id": user_id
         },
         headers={
-            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
-            "Access-Control-Allow-Credentials": "true"
+            "Access-Control-Allow-Origin": origin if origin else "*",
+            "Access-Control-Allow-Credentials": "true" if origin else "false"
         }
     )
 
@@ -36,6 +38,8 @@ async def app_exception_handler(request: Request, exc: BaseAppException):
     user_id = "anonymous"
     if hasattr(request.state, "user"):
         user_id = getattr(request.state.user, "id", user_id)
+
+    origin = request.headers.get("origin")
 
     return JSONResponse(
         status_code=exc.status_code,
@@ -49,7 +53,7 @@ async def app_exception_handler(request: Request, exc: BaseAppException):
             "details": exc.details
         },
         headers={
-            "Access-Control-Allow-Origin": request.headers.get("origin", "*"),
-            "Access-Control-Allow-Credentials": "true"
+            "Access-Control-Allow-Origin": origin if origin else "*",
+            "Access-Control-Allow-Credentials": "true" if origin else "false"
         }
     )

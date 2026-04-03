@@ -16,14 +16,25 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 FEEDBACK_FILE = DATA_DIR / "feedback.jsonl"
 
 def get_all_feedbacks():
-    """Recupere tous les feedbacks du fichier JSONL."""
+    """Recupere tous les feedbacks du fichier JSONL sans risquer de crash 500."""
     if not FEEDBACK_FILE.exists():
         return []
     
     feedbacks = []
-    with open(FEEDBACK_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            feedbacks.append(json.loads(line))
+    try:
+        with open(FEEDBACK_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line: continue
+                try:
+                    feedbacks.append(json.loads(line))
+                except json.JSONDecodeError:
+                    # On ignore les lignes corrompues pour ne pas bloquer tout l'affichage
+                    continue
+    except Exception as e:
+        print(f"CRITICAL ERROR (Admin): Impossible de lire {FEEDBACK_FILE}: {e}")
+        return []
+        
     return feedbacks[::-1] # Plus recent en premier
 
 @router.get("/stats")

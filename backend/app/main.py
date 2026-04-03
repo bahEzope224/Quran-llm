@@ -23,9 +23,12 @@ app = FastAPI(
 app.add_exception_handler(Exception, global_exception_handler)
 app.add_exception_handler(BaseAppException, app_exception_handler)
 
+# Nettoyage des origines pour eviter les espaces ou slashs parasites
+allowed_origins = [o.strip().rstrip("/") for o in settings.frontend_origins if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.frontend_origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

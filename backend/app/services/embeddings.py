@@ -58,7 +58,7 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
                 else:
                     use_fallback = True
 
-        except (error.URLError, TimeoutError, ConnectionRefusedError):
+        except (error.URLError, error.HTTPError, TimeoutError, ConnectionRefusedError):
             # Si on est sur localhost et que ca echoue, c'est normal en PROD
             if "127.0.0.1" in settings.embeddings_base_url or "localhost" in settings.embeddings_base_url:
                 print(f"DEBUG: Ollama local non detecte au Batch {i}. Basculement sur FastEmbed.")

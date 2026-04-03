@@ -6,6 +6,9 @@ from app.config import settings
 
 
 def _fallback_answer(context_chunks: list[dict[str, str]]) -> str:
+    """
+    Retourne une reponse de fallback si le LLM ne parvient pas a generer une reponse.
+    """
     if not context_chunks:
         return (
             "Désolé, je n'ai pas trouvé de preuves spécifiques dans mes sources pour "

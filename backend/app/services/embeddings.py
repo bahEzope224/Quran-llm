@@ -60,6 +60,9 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
 
 
 def cosine_similarity(vector_a: list[float], vector_b: list[float]) -> float:
+    """
+    Calcule la similarite cosinus entre deux vecteurs.
+    """
     if not vector_a or not vector_b or len(vector_a) != len(vector_b):
         return -1.0
 

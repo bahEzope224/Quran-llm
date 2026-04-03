@@ -11,6 +11,7 @@ from app.services.llm import (
 from app.services.retriever import retrieve_relevant_chunks
 
 SOURCE_PRIORITY = ["quran", "hadith", "tafsir", "fatwa"]
+# Map pour la classification des questions
 QUESTION_TOPIC_MAP = {
     "prayer": ["priere", "prayer", "salat", "salah", "salata", "assalata", "salawat", "recueillement"],
     "fasting": ["jeune", "fast", "fasting", "siyam", "sawm", "ramadan"],
@@ -50,6 +51,8 @@ QUESTION_INTENT_MAP = {
     ],
     "identification": ["qui est", "qui etait", "qui fut", "who is", "who was", "who were", "identifier"],
 }
+
+# Metadonnees pour enrichir les reponses
 TOPIC_METADATA = {
     "prayer": {
         "label": "la priere",
@@ -91,6 +94,7 @@ def _localize_chunks(chunks: list[dict[str, str]], translate_content: bool = Tru
 
 
 def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english_query: str = "", intent: str | None = None) -> str:
+    """Construit le prompt pour l'LLM en incluant les sources pertinentes."""
     # On ne garde que les sources qui mentionnent vraiment le sujet
     context_block = "\n".join(
         f"- [{chunk['type']}] {chunk['source']} ({chunk['ref']}): {chunk['content']}"
@@ -117,6 +121,7 @@ def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english
 
 
 def _normalize_question(text: str) -> str:
+    """Normalise la question pour faciliter la recherche."""
     normalized = unicodedata.normalize("NFKD", text)
     normalized = normalized.encode("ascii", "ignore").decode("ascii").lower()
     normalized = re.sub(r"[^a-z0-9\s]", " ", normalized)
@@ -124,6 +129,7 @@ def _normalize_question(text: str) -> str:
 
 
 def _detect_topic(question: str) -> str | None:
+    """Detecte le sujet de la question."""
     for topic, terms in QUESTION_TOPIC_MAP.items():
         if any(term in question for term in terms):
             return topic
@@ -131,6 +137,7 @@ def _detect_topic(question: str) -> str | None:
 
 
 def _detect_intent(question: str) -> str | None:
+    """Detecte l'intention de la question."""
     for intent, terms in QUESTION_INTENT_MAP.items():
         if any(term in question for term in terms):
             return intent
@@ -161,6 +168,7 @@ def _is_off_topic(question: str) -> bool:
 
 
 def _chunk_matches_topic(chunk: dict[str, str], topic: str) -> bool:
+    """Verifie si le chunk correspond au sujet."""
     if topic in chunk.get("tags", []):
         return True
 
@@ -182,6 +190,7 @@ def _chunk_matches_topic(chunk: dict[str, str], topic: str) -> bool:
 
 
 def _sort_chunks_by_priority(chunks: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Trie les chunks par priorite de source."""
     return sorted(chunks, key=lambda chunk: SOURCE_PRIORITY.index(chunk["type"]))
 
 
@@ -244,6 +253,7 @@ def _prune_irrelevant_chunks(chunks: list[dict], english_query: str) -> list[dic
 
 
 def _build_rule_based_answer(payload: ChatRequest, chunks: list[dict[str, str]]) -> str | None:
+    """Construit une reponse basee sur des regles."""
     question = _normalize_question(payload.question)
     topic = _detect_topic(question)
     intent = _detect_intent(question)
@@ -330,6 +340,7 @@ def _build_rule_based_answer(payload: ChatRequest, chunks: list[dict[str, str]])
 
 
 def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]:
+    """Construit les sources a partir des chunks."""
     role_by_type = {
         "quran": "Texte source coranique retourne par le retriever.",
         "tafsir": "Explication savante retournee par le retriever.",

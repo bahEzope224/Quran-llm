@@ -536,20 +536,10 @@ export default function ChatPage() {
     <div className="ilm-chat-page">
       <header className="top-app-bar">
         <div className="top-bar-left">
-          <div className="brand-row">
-            <button 
-              className="mobile-menu-btn" 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              aria-label="Menu"
-            >
-              <span className="material-symbols-outlined">menu</span>
-            </button>
-            
-            <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <img src="/logo.svg" alt="ʿIlm Logo" className="brand-logo" />
-              <span className="brand-title">ILM AI</span>
-            </Link>
-          </div>
+          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <img src="/logo.svg" alt="ʿIlm Logo" className="brand-logo" />
+            <span className="brand-title">ILM AI</span>
+          </Link>
         </div>
 
         <div className="top-bar-center">

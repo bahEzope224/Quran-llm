@@ -348,11 +348,10 @@ a {
   border-bottom: 1px solid rgba(0, 0, 0, 0.03);
 }
 
-.brand-row {
+.top-bar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 200px;
+  min-width: 240px;
 }
 
 .brand-logo {

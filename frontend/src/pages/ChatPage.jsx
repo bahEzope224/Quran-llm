@@ -177,8 +177,6 @@ function createAssistantMessage(response) {
 
 export default function ChatPage() {
   const { isLoaded: isUserLoaded, user } = useUser();
-  const [activeView, setActiveView] = useState('response');
-  const [activeScreen, setActiveScreen] = useState('chat');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [questionInput, setQuestionInput] = useState('');
   const [profile, setProfile] = useState(fallbackProfile);
@@ -288,7 +286,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [messages, activeView, chatState.activeConversationId]);
+  }, [messages, chatState.activeConversationId]);
 
   useEffect(() => () => {
     abortControllerRef.current?.abort();
@@ -416,7 +414,6 @@ export default function ChatPage() {
     stopGeneration();
     const nextConversation = createEmptyConversation();
     setChatError('');
-    setActiveView('response');
     setIsSidebarOpen(false);
     setChatState((currentState) => ({
       conversations: [nextConversation, ...currentState.conversations],
@@ -431,7 +428,6 @@ export default function ChatPage() {
 
     stopGeneration();
     setChatError('');
-    setActiveView('response');
     setIsSidebarOpen(false);
     setChatState((currentState) => ({
       ...currentState,
@@ -483,7 +479,7 @@ export default function ChatPage() {
         signal: abortControllerRef.current.signal,
         body: JSON.stringify({
           question: trimmedQuestion,
-          mode: activeView,
+          mode: 'response',
           profile: {
             legal_school: profile.legal_school,
             language: profile.language,
@@ -503,7 +499,6 @@ export default function ChatPage() {
       }
 
       const data = await response.json();
-      setActiveView('response');
       setIsLoadingChat(false);
       abortControllerRef.current = null;
       animateAssistantAnswer(assistantMessage.id, data.answer, data.sources);
@@ -553,63 +548,43 @@ export default function ChatPage() {
     <div className="ilm-chat-page">
       <header className="top-app-bar">
         <div className="top-bar-left">
-          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <img src="/logo.svg" alt="ʿIlm Logo" className="brand-logo" />
-            <span className="brand-title">ILM AI</span>
+            <div>
+              <span className="brand-title">ILM AI</span>
+              <p className="brand-subtitle">Assistant coranique fiable</p>
+            </div>
           </Link>
         </div>
 
-        <div className="top-bar-center">
-          {activeScreen !== 'chat' && (
-            <span className="profile-header-label">Mon profil</span>
-          )}
-        </div>
-
         <div className="top-bar-right">
-          <div className="top-bar-actions">
-            {activeScreen === 'chat' && (
-              <div className="view-toggle" aria-label="Changer de mode de reponse">
-                <button
-                  className={`toggle-pill ${activeView === 'response' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setActiveView('response')}
-                >
-                  Reponse
-                </button>
-                <button
-                  className={`toggle-pill ${activeView === 'proofs' ? 'active' : ''}`}
-                  type="button"
-                  onClick={() => setActiveView('proofs')}
-                >
-                  Preuves
-                </button>
-              </div>
+          <div className="user-pill">
+            {displayAvatarUrl ? (
+              <img src={displayAvatarUrl} alt={displayName} className="user-pill-avatar" />
+            ) : (
+              <span className="user-pill-initials">{displayInitials}</span>
             )}
-            
-            <button
-              className={`icon-button profile-button ${activeScreen === 'profile' ? 'active' : ''}`}
-              type="button"
-              aria-label={activeScreen === 'profile' ? 'Revenir au chat' : 'Acceder au profil'}
-              onClick={() =>
-                setActiveScreen((currentScreen) =>
-                  currentScreen === 'profile' ? 'chat' : 'profile'
-                )
-              }
-            >
-              <span className="material-symbols-outlined">
-                {activeScreen === 'profile' ? 'chat_bubble' : 'person'}
-              </span>
-            </button>
-
-            <div className="session-actions">
-              <Show when="signed-out">
-                <SignInButton mode="modal">
-                  <button className="auth-ghost-button header-auth-button" type="button">
-                    Connexion
-                  </button>
-                </SignInButton>
-              </Show>
+            <div>
+              <strong>{displayName}</strong>
+              <small>Connecté</small>
             </div>
+          </div>
+
+          <div className="session-actions">
+            <Show when="signed-in">
+              <SignOutButton>
+                <button className="auth-ghost-button header-auth-button" type="button">
+                  Se déconnecter
+                </button>
+              </SignOutButton>
+            </Show>
+            <Show when="signed-out">
+              <SignInButton mode="modal">
+                <button className="auth-solid-button header-auth-button" type="button">
+                  Se connecter
+                </button>
+              </SignInButton>
+            </Show>
           </div>
         </div>
       </header>
@@ -620,508 +595,274 @@ export default function ChatPage() {
       )}
 
       <main className="chat-main-container">
-        {activeScreen === 'chat' ? (
-          <div className={`chat-layout ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
-            {/* Rail d'icones lateral */}
-            <nav className="chat-sidebar-rail" aria-label="Rail de navigation">
-              <button
-                className="sidebar-rail-button"
-                type="button"
-                onClick={() => setIsSidebarOpen((currentValue) => !currentValue)}
-                aria-label={isSidebarOpen ? 'Masquer historique' : 'Afficher historique'}
-              >
-                <span className="material-symbols-outlined">
-                  {isSidebarOpen ? 'left_panel_close' : 'left_panel_open'}
-                </span>
-              </button>
+        <div className={`chat-layout ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
+          {/* Rail d'icones lateral */}
+          <nav className="chat-sidebar-rail" aria-label="Rail de navigation">
+            <button
+              className="sidebar-rail-button"
+              type="button"
+              onClick={() => setIsSidebarOpen((currentValue) => !currentValue)}
+              aria-label={isSidebarOpen ? 'Masquer historique' : 'Afficher historique'}
+            >
+              <span className="material-symbols-outlined">
+                {isSidebarOpen ? 'left_panel_close' : 'left_panel_open'}
+              </span>
+            </button>
 
-              <button
-                className="sidebar-rail-button"
-                type="button"
+            <button
+              className="sidebar-rail-button"
+              type="button"
+              onClick={createNewConversation}
+              aria-label="Nouvelle discussion"
+            >
+              <span className="material-symbols-outlined">edit</span>
+            </button>
+          </nav>
+
+          {/* Carte Historique */}
+          <nav className={`chat-sidebar ${!isSidebarOpen ? 'closed' : ''}`} aria-label="Historique des discussions">
+            <div className="chat-sidebar-header">
+              <p className="sidebar-kicker">DISCUSSIONS</p>
+              <h2>Historique</h2>
+              <button 
+                className="new-chat-btn-sidebar"
                 onClick={createNewConversation}
-                aria-label="Nouvelle discussion"
               >
-                <span className="material-symbols-outlined">edit</span>
+                <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>add</span>
+                NOUVELLE
               </button>
-            </nav>
+            </div>
 
-            {/* Carte Historique (Style Photo 2) */}
-            <nav className={`chat-sidebar ${!isSidebarOpen ? 'closed' : ''}`} aria-label="Historique des discussions">
-              <div className="chat-sidebar-header">
-                <p className="sidebar-kicker">DISCUSSIONS</p>
-                <h2>Historique</h2>
-                <button 
-                  className="new-chat-btn-sidebar"
-                  onClick={createNewConversation}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>add</span>
-                  NOUVELLE
-                </button>
-              </div>
+            <div className="conversation-list">
+              {sortedConversations.map((conversation) => {
+                const previewMessage = conversation.messages.find((message) => message.role === 'user');
 
-              <div className="conversation-list">
-                {sortedConversations.map((conversation) => {
-                  const previewMessage = conversation.messages.find((message) => message.role === 'user');
+                return (
+                  <button
+                    key={conversation.id}
+                    className={`conversation-item ${
+                      conversation.id === chatState.activeConversationId ? 'active' : ''
+                    }`}
+                    type="button"
+                    onClick={() => selectConversation(conversation.id)}
+                  >
+                    <strong>{conversation.title}</strong>
+                    <p>{previewMessage?.content ?? 'Aucun message pour le moment.'}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
 
+          <section className={`chat-panel ${isSidebarOpen ? '' : 'expanded'}`}>
+            <section className="chat-thread" aria-label="Historique de conversation">
+              {chatError ? <p className="status-banner warning">{chatError}</p> : null}
+
+              {!messages.length ? (
+                <article className="empty-chat-state">
+                  <span className="material-symbols-outlined">forum</span>
+                  <h2>Votre nouvelle discussion</h2>
+                  <p>Posez votre question et profitez d'une assistance ciblée, conservée même après rafraîchissement.</p>
+                </article>
+              ) : null}
+
+              {messages.map((message) => {
+                if (message.role === 'user') {
                   return (
-                    <button
-                      key={conversation.id}
-                      className={`conversation-item ${
-                        conversation.id === chatState.activeConversationId ? 'active' : ''
-                      }`}
-                      type="button"
-                      onClick={() => selectConversation(conversation.id)}
-                    >
-                      <strong>{conversation.title}</strong>
-                      <p>{previewMessage?.content ?? 'Aucun message pour le moment.'}</p>
-                    </button>
+                    <div key={message.id} className="user-message-row message-enter">
+                      <article className="user-message">
+                        <p>{message.content}</p>
+                      </article>
+                    </div>
                   );
-                })}
-              </div>
-            </nav>
+                }
 
-            <section className={`chat-panel ${isSidebarOpen ? '' : 'expanded'}`}>
-              <section className="chat-thread" aria-label="Historique de conversation">
-                {chatError ? <p className="status-banner warning">{chatError}</p> : null}
+                const sourceCards = message.sources.map(toSourceCard);
 
-                {!messages.length ? (
-                  <article className="empty-chat-state">
-                    <span className="material-symbols-outlined">forum</span>
-                    <h2>Nouvelle discussion</h2>
-                    <p>Posez votre premiere question. Cette discussion restera disponible apres rafraichissement.</p>
-                  </article>
-                ) : null}
-
-                {messages.map((message) => {
-                  if (message.role === 'user') {
-                    return (
-                      <div key={message.id} className="user-message-row message-enter">
-                        <article className="user-message">
-                          <p>{message.content}</p>
-                        </article>
-                      </div>
-                    );
-                  }
-
-                  const sourceCards = message.sources.map(toSourceCard);
-                  const evidenceHighlights = buildEvidenceHighlights(message.sources);
-
-                  return (
-                    <div key={message.id} className="assistant-stack message-enter">
-                      {message.error_id ? (
-                        <div className="error-message-row">
-                          <div className="error-bubble">
-                            <div className="error-header">
-                              <span className="material-symbols-outlined">report</span>
-                              <span>Perturbation Technique</span>
-                            </div>
-                            <p className="error-text">{message.displayedAnswer || message.answer}</p>
-                            <div className="error-footer">
-                              <span>Identifiant d'incident :</span>
-                              <span 
-                                className="error-id-tag" 
-                                onClick={() => {
-                                  navigator.clipboard.writeText(message.error_id);
-                                  alert("ID de l'erreur copié !");
-                                }}
-                                title="Copier l'ID"
-                              >
-                                {message.error_id}
-                              </span>
-                            </div>
+                return (
+                  <div key={message.id} className="assistant-stack message-enter">
+                    {message.error_id ? (
+                      <div className="error-message-row">
+                        <div className="error-bubble">
+                          <div className="error-header">
+                            <span className="material-symbols-outlined">report</span>
+                            <span>Perturbation technique</span>
+                          </div>
+                          <p className="error-text">{message.displayedAnswer || message.answer}</p>
+                          <div className="error-footer">
+                            <span>Identifiant :</span>
+                            <span 
+                              className="error-id-tag" 
+                              onClick={() => {
+                                navigator.clipboard.writeText(message.error_id);
+                                alert("ID de l'erreur copié !");
+                              }}
+                              title="Copier l'ID"
+                            >
+                              {message.error_id}
+                            </span>
                           </div>
                         </div>
-                      ) : activeView === 'response' ? (
-                        <>
-                          <article className="assistant-response-card">
-                            <div className="assistant-card-header">
-                              <div className="reliable-badge">
-                                <span className="material-symbols-outlined fill">verified</span>
-                                <span>Fiable</span>
-                              </div>
-
-                              <button
-                                className="copy-button"
-                                type="button"
-                                onClick={() =>
-                                  navigator.clipboard.writeText(message.displayedAnswer || message.answer)
-                                }
-                              >
-                                <span className="material-symbols-outlined">content_copy</span>
-                                <span>Copier</span>
-                              </button>
+                      </div>
+                    ) : (
+                      <>
+                        <article className="assistant-response-card">
+                          <div className="assistant-card-header">
+                            <div className="reliable-badge">
+                              <span className="material-symbols-outlined fill">verified</span>
+                              <span>Fiable</span>
                             </div>
 
-                            <p
-                              className={`assistant-response-text ${
-                                message.isComplete ? '' : 'is-streaming'
-                              }`}
+                            <button
+                              className="copy-button"
+                              type="button"
+                              onClick={() =>
+                                navigator.clipboard.writeText(message.displayedAnswer || message.answer)
+                              }
                             >
-                              {message.displayedAnswer}
-                            </p>
+                              <span className="material-symbols-outlined">content_copy</span>
+                              <span>Copier</span>
+                            </button>
+                          </div>
 
-                            {message.isComplete && message.sources.length ? (
-                              <div className="tag-list" aria-label="Etiquettes">
-                                {message.sources.map((source) => (
-                                  <span
-                                    key={`${message.id}-${source.type}-${source.ref}`}
-                                    className="topic-tag"
-                                  >
-                                    {source.type}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : null}
-                          </article>
+                          <p
+                            className={`assistant-response-text ${
+                              message.isComplete ? '' : 'is-streaming'
+                            }`}
+                          >
+                            {message.displayedAnswer}
+                          </p>
 
-                          {message.isComplete && sourceCards.length ? (
-                            <div className="source-stack">
-                              {sourceCards.map((card) => (
-                                <SourceCard key={card.id} card={card} />
+                          {message.isComplete && message.sources.length ? (
+                            <div className="tag-list" aria-label="Etiquettes">
+                              {message.sources.map((source) => (
+                                <span
+                                  key={`${message.id}-${source.type}-${source.ref}`}
+                                  className="topic-tag"
+                                >
+                                  {source.type}
+                                </span>
                               ))}
                             </div>
                           ) : null}
+                        </article>
 
-                          {/* Section Feedback - Deplacee a la fin pour eviter les doublons */}
-                          {message.isComplete && (
-                            <div className="message-feedback-container">
-                              {!feedbackStore[message.id]?.submitted ? (
-                                <>
-                                  {!feedbackStore[message.id]?.showCommentBox ? (
-                                    <div className="feedback-buttons">
-                                      <button 
-                                        className="feedback-btn up" 
-                                        onClick={() => handleFeedback(message, 'up')}
-                                        title="Utile"
-                                      >
-                                        <span className="material-symbols-outlined">thumb_up</span>
-                                        <span>Utile</span>
-                                      </button>
-                                      <button 
-                                        className="feedback-btn down" 
-                                        onClick={() => handleFeedback(message, 'down')}
-                                        title="Imprécis"
-                                      >
-                                        <span className="material-symbols-outlined">thumb_down</span>
-                                        <span>Imprécis</span>
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="feedback-comment-box">
-                                      <p>Comment pourrions-nous être plus précis ?</p>
-                                      <textarea 
-                                        placeholder="Ex: la source du hadith manque de précision..."
-                                        value={feedbackStore[message.id]?.comment || ''}
-                                        onChange={(e) => setFeedbackStore(prev => ({
-                                          ...prev,
-                                          [message.id]: { ...prev[message.id], comment: e.target.value }
-                                        }))}
-                                      />
-                                      <div className="comment-actions">
-                                        <button 
-                                          className="submit-comment-btn"
-                                          onClick={() => handleFeedback(message, 'down', feedbackStore[message.id]?.comment)}
-                                        >
-                                          Envoyer le retour
-                                        </button>
-                                        <button 
-                                          className="skip-comment-btn"
-                                          onClick={() => handleFeedback(message, 'down', '')}
-                                        >
-                                          Passer
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                <div className="feedback-success">
-                                  <span className="material-symbols-outlined">check_circle</span>
-                                  <span>{feedbackStore[message.id]?.type === 'up' ? 'Merci pour votre retour positif ! ✨' : 'Merci, votre retour nous aide à nous améliorer.'}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <section className="proofs-panel" aria-label="Preuves et references">
-                          <article className="proofs-overview-card">
-                            <div className="proofs-overview-head">
-                              <div>
-                                <p className="proofs-kicker">Niveau de preuve</p>
-                                <h2>Sources mobilisees pour justifier la reponse</h2>
-                              </div>
-                              <div className="proofs-score">
-                                <span className="material-symbols-outlined fill">gpp_good</span>
-                                <span>{message.sources.length} sources</span>
-                              </div>
-                            </div>
-
-                            <p className="proofs-overview-text">
-                              Cette reponse s&apos;appuie sur les references retournees par le backend
-                              pour justifier le contenu principal et rendre les preuves consultables.
-                            </p>
-
-                            <div className="proofs-highlight-grid">
-                              {evidenceHighlights.map((item) => (
-                                <article key={item.id} className="proof-highlight-card">
-                                  <span className="proof-highlight-title">{item.title}</span>
-                                  <strong>{item.value}</strong>
-                                  <p>{item.detail}</p>
-                                </article>
-                              ))}
-                            </div>
-                          </article>
-
-                          <div className="proofs-evidence-list">
-                            {sourceCards.map((card, index) => (
-                              <article key={card.id} className={`proof-item ${card.type}`}>
-                                <div className="proof-step">
-                                  <span>{index + 1}</span>
-                                </div>
-
-                                <div className="proof-item-content">
-                                  <div className="proof-item-header">
-                                    <div className="proof-item-source">
-                                      <span className="material-symbols-outlined">{card.icon}</span>
-                                      <div>
-                                        <p>{card.source}</p>
-                                        <span>{card.reference}</span>
-                                      </div>
-                                    </div>
-
-                                    <span className="proof-chip">
-                                      {card.type === 'quran'
-                                        ? 'Texte source'
-                                        : card.type === 'tafsir'
-                                          ? 'Explication'
-                                          : 'Confirmation'}
-                                    </span>
-                                  </div>
-
-                                  {card.type === 'quran' ? (
-                                    <>
-                                      <p className="arabic-text proof-arabic" dir="rtl">
-                                        {card.title}
-                                      </p>
-                                      <p className="proof-excerpt">"{card.translation}"</p>
-                                    </>
-                                  ) : (
-                                    <p
-                                      className={`proof-excerpt ${
-                                        card.type === 'hadith' ? 'italic' : ''
-                                      }`}
-                                    >
-                                      "{card.content}"
-                                    </p>
-                                  )}
-                                </div>
-                              </article>
+                        {message.isComplete && sourceCards.length ? (
+                          <div className="source-stack">
+                            {sourceCards.map((card) => (
+                              <SourceCard key={card.id} card={card} />
                             ))}
                           </div>
-                        </section>
-                      )}
+                        ) : null}
 
-                      {!message.isComplete && (
-                        <div className="typing-indicator" aria-label="Assistant en train d'ecrire">
-                          <span className="typing-dot" />
-                          <span className="typing-dot" />
-                          <span className="typing-dot" />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                        {message.isComplete && (
+                          <div className="message-feedback-container">
+                            {!feedbackStore[message.id]?.submitted ? (
+                              <>
+                                {!feedbackStore[message.id]?.showCommentBox ? (
+                                  <div className="feedback-buttons">
+                                    <button 
+                                      className="feedback-btn up" 
+                                      onClick={() => handleFeedback(message, 'up')}
+                                      title="Utile"
+                                    >
+                                      <span className="material-symbols-outlined">thumb_up</span>
+                                      <span>Utile</span>
+                                    </button>
+                                    <button 
+                                      className="feedback-btn down" 
+                                      onClick={() => handleFeedback(message, 'down')}
+                                      title="Imprécis"
+                                    >
+                                      <span className="material-symbols-outlined">thumb_down</span>
+                                      <span>Imprécis</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="feedback-comment-box">
+                                    <p>Comment pourrions-nous être plus précis ?</p>
+                                    <textarea 
+                                      placeholder="Ex: la source du hadith manque de précision..."
+                                      value={feedbackStore[message.id]?.comment || ''}
+                                      onChange={(e) => setFeedbackStore(prev => ({
+                                        ...prev,
+                                        [message.id]: { ...prev[message.id], comment: e.target.value }
+                                      }))}
+                                    />
+                                    <div className="comment-actions">
+                                      <button 
+                                        className="submit-comment-btn"
+                                        onClick={() => handleFeedback(message, 'down', feedbackStore[message.id]?.comment)}
+                                      >
+                                        Envoyer le retour
+                                      </button>
+                                      <button 
+                                        className="skip-comment-btn"
+                                        onClick={() => handleFeedback(message, 'down', '')}
+                                      >
+                                        Passer
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="feedback-success">
+                                <span className="material-symbols-outlined">check_circle</span>
+                                <span>{feedbackStore[message.id]?.type === 'up' ? 'Merci pour votre retour positif ! ✨' : 'Merci, votre retour nous aide à nous améliorer.'}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    )}
 
-                <div ref={chatEndRef} />
-              </section>
+                    {!message.isComplete && (
+                      <div className="typing-indicator" aria-label="Assistant en train d'écrire">
+                        <span className="typing-dot" />
+                        <span className="typing-dot" />
+                        <span className="typing-dot" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              <div ref={chatEndRef} />
             </section>
-          </div>
-        ) : (
-          <section className="profile-page" aria-label="Profil utilisateur">
-            {profileError ? <p className="status-banner warning">{profileError}</p> : null}
-
-            <article className="profile-hero">
-              {displayAvatarUrl ? (
-                <img className="profile-avatar-image" src={displayAvatarUrl} alt={displayName} />
-              ) : (
-                <div className="profile-avatar">{displayInitials}</div>
-              )}
-              <div className="profile-identity">
-                <p className="profile-kicker">Compte</p>
-                <h1>{displayName}</h1>
-                {isUserLoaded && user?.primaryEmailAddress?.emailAddress ? (
-                  <p className="profile-email">{user.primaryEmailAddress.emailAddress}</p>
-                ) : null}
-              </div>
-            </article>
-
-            <article className="profile-card">
-              <div className="section-heading">
-                <span className="material-symbols-outlined">tune</span>
-                <h2>Preferences</h2>
-              </div>
-
-              <div className="settings-grid">
-                <label className="setting-field">
-                  <span>Ecole juridique</span>
-                  <select value={profile.legal_school} onChange={() => {}} disabled={isLoadingProfile}>
-                    {legalSchools.map((school) => (
-                      <option key={school} value={school}>
-                        {school}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="setting-field">
-                  <span>Langue</span>
-                  <select value={profile.language} onChange={() => {}} disabled={isLoadingProfile}>
-                    {languages.map((language) => (
-                      <option key={language} value={language}>
-                        {language}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label className="setting-field">
-                  <span>Mode</span>
-                  <select value={profile.mode} onChange={() => {}} disabled={isLoadingProfile}>
-                    {modes.map((mode) => (
-                      <option key={mode} value={mode}>
-                        {mode}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </article>
-
-            <article className="profile-card">
-              <div className="section-heading">
-                <span className="material-symbols-outlined">auto_stories</span>
-                <h2>Activite</h2>
-              </div>
-
-              <div className="activity-list">
-                <button
-                  className="activity-item"
-                  type="button"
-                  onClick={() => {
-                    setActiveScreen('chat');
-                    setIsSidebarOpen(true);
-                  }}
-                >
-                  <div>
-                    <strong>Historique</strong>
-                    <p>Retrouver les dernières questions et réponses consultées.</p>
-                  </div>
-                  <span className="material-symbols-outlined">history</span>
-                </button>
-
-                <button
-                  className="activity-item"
-                  type="button"
-                  onClick={() => {
-                    createNewConversation();
-                    setActiveScreen('chat');
-                  }}
-                >
-                  <div>
-                    <strong>Nouvelle discussion</strong>
-                    <p>Poser une nouvelle question à l'IA dès maintenant.</p>
-                  </div>
-                  <span className="material-symbols-outlined">add_circle</span>
-                </button>
-              </div>
-            </article>
-
-            <article className="profile-card">
-              <div className="section-heading">
-                <span className="material-symbols-outlined">notifications</span>
-                <h2>Notifications</h2>
-              </div>
-
-              <div className="notification-row">
-                <div>
-                  <strong>Rappels et nouveautes</strong>
-                  <p>Recevoir les notifications importantes de l&apos;application.</p>
-                </div>
-                <label className="switch">
-                  <input type="checkbox" checked={profile.notifications_enabled} readOnly />
-                  <span className="switch-track">
-                    <span className="switch-thumb" />
-                  </span>
-                </label>
-              </div>
-            </article>
-
-            <article className="profile-card danger-card">
-              <div className="section-heading">
-                <span className="material-symbols-outlined">logout</span>
-                <h2>Session</h2>
-              </div>
-
-              <div className="signout-row">
-                <div>
-                  <strong>Se deconnecter</strong>
-                  <p>Fermer la session Clerk sur cet appareil.</p>
-                </div>
-
-                <Show when="signed-in">
-                  <SignOutButton>
-                    <button className="signout-button" type="button">
-                      Se deconnecter
-                    </button>
-                  </SignOutButton>
-                </Show>
-
-                <Show when="signed-out">
-                  <SignInButton mode="modal">
-                    <button className="signout-button secondary" type="button">
-                      Se connecter
-                    </button>
-                  </SignInButton>
-                </Show>
-              </div>
-            </article>
           </section>
-        )}
+        </div>
       </main>
 
-      {activeScreen === 'chat' ? (
-        <div className="composer-shell">
-          <p className="composer-disclaimer">
-            Avertissement : Ce service ne constitue pas une fatwa. Verifiez les reponses de l&apos;IA 
-            aupres de sources authentiques. ILM AI decline toute responsabilite quant a l&apos;interpretation des resultats.
-          </p>
-          <form className="composer" onSubmit={handleSubmit}>
-            <label className="sr-only" htmlFor="chat-question">
-              Posez votre question
-            </label>
-            <input
-              id="chat-question"
-              type="text"
-              placeholder="Posez votre question..."
-              value={questionInput}
-              onChange={(event) => setQuestionInput(event.target.value)}
-            />
+      <div className="composer-shell">
+        <p className="composer-disclaimer">
+          Avertissement : Ce service ne constitue pas une fatwa. Vérifiez les réponses de l’IA avec des sources authentiques.
+        </p>
+        <form className="composer" onSubmit={handleSubmit}>
+          <label className="sr-only" htmlFor="chat-question">
+            Posez votre question
+          </label>
+          <input
+            id="chat-question"
+            type="text"
+            placeholder="Posez votre question..."
+            value={questionInput}
+            onChange={(event) => setQuestionInput(event.target.value)}
+          />
 
-            <button
-              className={`send-button ${isGenerating ? 'stop' : ''}`}
-              type={isGenerating ? 'button' : 'submit'}
-              aria-label={isGenerating ? 'Interrompre la reponse' : 'Envoyer'}
-              onClick={isGenerating ? stopGeneration : undefined}
-              disabled={!isGenerating && !questionInput.trim()}
-            >
-              <span className="material-symbols-outlined send-icon">
-                {isGenerating ? 'stop' : 'arrow_upward'}
-              </span>
-            </button>
-          </form>
-        </div>
-      ) : null}
+          <button
+            className={`send-button ${isGenerating ? 'stop' : ''}`}
+            type={isGenerating ? 'button' : 'submit'}
+            aria-label={isGenerating ? 'Interrompre la réponse' : 'Envoyer'}
+            onClick={isGenerating ? stopGeneration : undefined}
+            disabled={!isGenerating && !questionInput.trim()}
+          >
+            <span className="material-symbols-outlined send-icon">
+              {isGenerating ? 'stop' : 'arrow_upward'}
+            </span>
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

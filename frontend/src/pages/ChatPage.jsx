@@ -893,7 +893,7 @@ export default function ChatPage() {
                             </div>
 
                             <p className="proofs-overview-text">
-                              Cette reponse s&apos;appuie sur les references retournees par le backend
+                              Cette reponse s&apos;appuie sur des references religieuses islamiques 
                               pour justifier le contenu principal et rendre les preuves consultables.
                             </p>
 
@@ -957,13 +957,13 @@ export default function ChatPage() {
                         </section>
                       )}
 
-                      {!message.isComplete && (
+                      {/* {!message.isComplete && (
                         <div className="typing-indicator" aria-label="Assistant en train d'ecrire">
                           <span className="typing-dot" />
                           <span className="typing-dot" />
                           <span className="typing-dot" />
                         </div>
-                      )}
+                      )} */}
                     </div>
                   );
                 })}

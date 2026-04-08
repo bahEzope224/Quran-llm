@@ -281,10 +281,20 @@ def _restrict_redundant_sources(
 
 def _answer_structure_question(question: str) -> str | None:
     """Repere les questions sur la forme du Coran et renvoie une reponse factuelle."""
-    normalized = question.lower()
+    normalized = _normalize_question(question)
     for fact in QURAN_STRUCTURE_FACTS:
         if any(trigger in normalized for trigger in fact["triggers"]):
             return fact["answer"]
+
+    if "combien" in normalized:
+        if "verset" in normalized or "ayat" in normalized or "aya" in normalized:
+            return QURAN_STRUCTURE_FACTS[1]["answer"]
+        if "sourate" in normalized or "chapitre" in normalized or "surah" in normalized:
+            return QURAN_STRUCTURE_FACTS[0]["answer"]
+        if "partie" in normalized or "juz" in normalized or "section" in normalized:
+            return QURAN_STRUCTURE_FACTS[2]["answer"]
+        if "hizb" in normalized:
+            return QURAN_STRUCTURE_FACTS[3]["answer"]
 
     if not any(term in normalized for term in ("prophète", "prophete", "prophet", "messager")):
         return None

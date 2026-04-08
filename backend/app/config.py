@@ -52,7 +52,15 @@ class Settings(BaseModel):
     embeddings_candidate_pool: int = Field(
         default_factory=lambda: int(os.getenv("EMBEDDINGS_CANDIDATE_POOL", "18"))
     )
+    embeddings_batch_size: int = Field(
+        default_factory=lambda: int(os.getenv("EMBEDDINGS_BATCH_SIZE", "5"))
+    )
+    embeddings_fallback_model: str = Field(
+        default_factory=lambda: os.getenv("EMBEDDINGS_FALLBACK_MODEL", "BAAI/bge-small-en-v1.5")
+    )
+    embeddings_cache_path: str = Field(
+        default_factory=lambda: os.getenv("EMBEDDINGS_CACHE_PATH", "backend/data/embedding_cache.json")
+    )
 
 
 settings = Settings()
-

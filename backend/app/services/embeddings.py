@@ -52,24 +52,31 @@ def _persist_embedding_cache(cache: dict[str, list[float]]) -> None:
     cache_path.write_text(json.dumps(cache))
 
 
-def _call_embedding_provider(batch: list[str], batch_idx: int) -> list[list[float]]:
-    use_fallback = False
+def _build_request(base_url: str, batch: list[str]) -> request.Request:
+    payload = {"model": settings.embeddings_model, "input": batch}
+    auth_header = (
+        {}
+        if settings.embeddings_provider == "ollama"
+        else {"Authorization": f"Bearer {settings.llm_api_key}"} if settings.llm_api_key else {}
+    )
+    return request.Request(
+        base_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "User-Agent": "ILM-AI-Backend", **auth_header},
+        method="POST",
+    )
+
+
+def _call_embedding_provider(
+    batch: list[str],
+    batch_idx: int,
+    base_url: str | None = None,
+    used_spare: bool = False,
+) -> tuple[list[list[float]], float]:
+    base_url = base_url or settings.embeddings_base_url
     start = time.perf_counter()
     try:
-        payload = {"model": settings.embeddings_model, "input": batch}
-        auth_header = (
-            {}
-            if settings.embeddings_provider == "ollama"
-            else {"Authorization": f"Bearer {settings.llm_api_key}"} if settings.llm_api_key else {}
-        )
-
-        http_request = request.Request(
-            settings.embeddings_base_url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "User-Agent": "ILM-AI-Backend", **auth_header},
-            method="POST",
-        )
-
+        http_request = _build_request(base_url, batch)
         with request.urlopen(http_request, timeout=settings.llm_timeout_seconds) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
             batch_embeddings = response_payload.get("embeddings", [])
@@ -79,34 +86,56 @@ def _call_embedding_provider(batch: list[str], batch_idx: int) -> list[list[floa
                 print(
                     f"DEBUG: Provider embeddings batch {batch_idx} succeeded in {duration:.2f}s (code {status_code}, size {len(batch)})."
                 )
-                return [list(map(float, emb)) for emb in batch_embeddings]
+                return [list(map(float, emb)) for emb in batch_embeddings], duration
             print(
                 f"DEBUG: Provider batch {batch_idx} returned empty payload (status {status_code})."
             )
-            use_fallback = True
-    except (error.URLError, error.HTTPError, TimeoutError, ConnectionRefusedError) as exc:
+            raise error.HTTPError(base_url, status_code, "Empty payload", hdrs=None, fp=None)
+    except error.HTTPError as http_err:
+        if (
+            http_err.code == 404
+            and settings.embeddings_spare_base_url
+            and not used_spare
+        ):
+            if settings.embeddings_retry_delay_seconds > 0:
+                time.sleep(settings.embeddings_retry_delay_seconds)
+            print(
+                f"DEBUG: Primary embeddings URL returned 404; retrying batch {batch_idx} against spare endpoint."
+            )
+            return _call_embedding_provider(
+                batch,
+                batch_idx,
+                base_url=settings.embeddings_spare_base_url,
+                used_spare=True,
+            )
+        print(
+            f"DEBUG: Provider HTTP error batch {batch_idx} ({http_err}). Switching to FastEmbed fallback."
+        )
+        return _run_fastembed(batch, batch_idx)
+    except (error.URLError, TimeoutError, ConnectionRefusedError) as exc:
         print(
             f"DEBUG: Provider failure batch {batch_idx} ({exc}). Switching to FastEmbed fallback."
         )
-        use_fallback = True
+        return _run_fastembed(batch, batch_idx)
     except Exception as exc:
         print(f"ERROR: Unexpected provider failure batch {batch_idx}: {exc}. Using fallback.")
-        use_fallback = True
+        return _run_fastembed(batch, batch_idx)
 
-    if use_fallback:
-        try:
-            fallback_start = time.perf_counter()
-            model = _get_local_embedder()
-            batch_res = list(model.embed(batch))
-            duration = time.perf_counter() - fallback_start
-            print(f"DEBUG: FastEmbed batch {batch_idx} done in {duration:.2f}s.")
-            return [list(map(float, emb)) for emb in batch_res]
-        except Exception as fe_err:
-            raise LLMException(
-                message=f"Echec total de la generation (batch {batch_idx}). Fallback local echoue.",
-                location="embeddings_service.generate_embeddings",
-                details={"fastembed_err": str(fe_err)}
-            )
+
+def _run_fastembed(batch: list[str], batch_idx: int) -> tuple[list[list[float]], float]:
+    fallback_start = time.perf_counter()
+    try:
+        model = _get_local_embedder()
+        batch_res = list(model.embed(batch))
+        duration = time.perf_counter() - fallback_start
+        print(f"DEBUG: FastEmbed batch {batch_idx} done in {duration:.2f}s.")
+        return [list(map(float, emb)) for emb in batch_res], duration
+    except Exception as fe_err:
+        raise LLMException(
+            message=f"Echec total de la generation (batch {batch_idx}). Fallback local echoue.",
+            location="embeddings_service.generate_embeddings",
+            details={"fastembed_err": str(fe_err)}
+        )
 
 
 def generate_embeddings(texts: list[str]) -> list[list[float]]:
@@ -138,7 +167,11 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     for offset in range(0, len(pending_indices), batch_size):
         batch_indices = pending_indices[offset : offset + batch_size]
         batch_texts = [truncated_texts[idx] for idx in batch_indices]
-        batch_embeddings = _call_embedding_provider(batch_texts, offset)
+        batch_embeddings, duration = _call_embedding_provider(batch_texts, offset)
+        if duration > settings.llm_timeout_seconds:
+            print(
+                f"WARNING: Embedding batch {offset} took {duration:.1f}s, nearing timeout ({settings.llm_timeout_seconds}s)."
+            )
 
         for idx, embedding in zip(batch_indices, batch_embeddings):
             normalized = [float(value) for value in embedding]

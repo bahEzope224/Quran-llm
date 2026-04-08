@@ -61,6 +61,12 @@ class Settings(BaseModel):
     embeddings_cache_path: str = Field(
         default_factory=lambda: os.getenv("EMBEDDINGS_CACHE_PATH", "backend/data/embedding_cache.json")
     )
+    embeddings_retry_delay_seconds: float = Field(
+        default_factory=lambda: float(os.getenv("EMBEDDINGS_RETRY_DELAY_SECONDS", "60"))
+    )
+    embeddings_spare_base_url: str | None = Field(
+        default_factory=lambda: os.getenv("EMBEDDINGS_SPARE_BASE_URL", "") or None
+    )
 
 
 settings = Settings()

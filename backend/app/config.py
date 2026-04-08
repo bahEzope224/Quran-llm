@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 class Settings(BaseModel):
     app_name: str = "ILM AI"
-    app_version: str = "0.14.2"
+    app_version: str = "0.15.0"
     app_description: str = "Backend FastAPI pour l'application ILM AI."
     frontend_origins: list[str] = Field(
         default_factory=lambda: os.getenv(

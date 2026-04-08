@@ -18,6 +18,8 @@ class UserProfile(BaseModel):
     language: str
     mode: str
     notifications_enabled: bool = True
+    accepted_privacy: bool = False
+    accepted_cgu: bool = False
 
 
 class ChatRequest(BaseModel):
@@ -42,6 +44,8 @@ class UserProfileResponse(BaseModel):
     language: str
     mode: str
     notifications_enabled: bool
+    accepted_privacy: bool
+    accepted_cgu: bool
 
 
 class FeedbackRequest(BaseModel):
@@ -51,3 +55,14 @@ class FeedbackRequest(BaseModel):
     comment: str | None = None
     profile: UserProfile | None = None
     sources: list[SourceItem] = Field(default_factory=list)
+
+
+class PolicyDocument(BaseModel):
+    privacy_text: str
+    terms_text: str
+    updated_at: str | None = None
+
+
+class PolicyUpdateRequest(BaseModel):
+    privacy_text: str | None = None
+    terms_text: str | None = None

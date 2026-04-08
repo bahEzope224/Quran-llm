@@ -2128,6 +2128,66 @@ a {
   }
 }
 
+.policy-updated {
+  font-size: 0.9rem;
+  color: #475467;
+}
+
+.policy-editor-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.policy-editor-grid label {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.policy-textarea {
+  width: 100%;
+  min-height: 150px;
+  background: #f8fafc;
+  border: 1px solid #e4e7ec;
+  border-radius: 16px;
+  padding: 12px 14px;
+  font-family: 'Inter', sans-serif;
+  color: #0f172a;
+  resize: vertical;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.policy-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.policy-status {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+.policy-status.success {
+  background: #ecfdf3;
+  color: #166534;
+  border: 1px solid #a7f3d0;
+}
+
+.policy-status.error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.policy-save-btn {
+  margin-left: auto;
+}
+
 /* --- ERROR MESSAGES (PREMIUM ALERT) --- */
 .error-message-row {
   display: flex;

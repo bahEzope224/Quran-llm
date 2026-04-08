@@ -32,6 +32,11 @@ export default function AdminPage() {
   const [bugLog, setBugLog] = useState([]);
   const [selectedResponse, setSelectedResponse] = useState(null);
   const [selectedBug, setSelectedBug] = useState(null);
+  const [policies, setPolicies] = useState({ privacy_text: '', terms_text: '', updated_at: '' });
+  const [privacyDraft, setPrivacyDraft] = useState('');
+  const [termsDraft, setTermsDraft] = useState('');
+  const [policyFeedback, setPolicyFeedback] = useState(null);
+  const [isSavingPolicies, setIsSavingPolicies] = useState(false);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn || !isAdmin) return;
@@ -62,6 +67,39 @@ export default function AdminPage() {
     fetchData();
   }, [isLoaded, isSignedIn, isAdmin]);
 
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn || !isAdmin) return;
+
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const fetchPolicies = async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${API_BASE_URL}/admin/policies`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error('Impossible de charger les politiques');
+        const data = await res.json();
+        if (!isMounted) return;
+        setPolicies(data);
+        setPrivacyDraft(data.privacy_text);
+        setTermsDraft(data.terms_text);
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Erreur chargement politiques:', err);
+      }
+    };
+
+    fetchPolicies();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, [isLoaded, isSignedIn, isAdmin, getToken]);
+
   const handleDelete = async (timestamp) => {
     if (!window.confirm('Voulez-vous vraiment supprimer ce feedback ?')) return;
 
@@ -82,6 +120,39 @@ export default function AdminPage() {
       }
     } catch (err) {
       console.error('Erreur suppression:', err);
+    }
+  };
+
+  const handleSavePolicies = async () => {
+    setPolicyFeedback(null);
+    setIsSavingPolicies(true);
+
+    try {
+      const token = await getToken();
+      const res = await fetch(`${API_BASE_URL}/admin/policies`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          privacy_text: privacyDraft,
+          terms_text: termsDraft,
+        }),
+      });
+
+      if (!res.ok) throw new Error('mise à jour refusée');
+
+      const updated = await res.json();
+      setPolicies(updated);
+      setPrivacyDraft(updated.privacy_text);
+      setTermsDraft(updated.terms_text);
+      setPolicyFeedback({ type: 'success', message: 'Politiques sauvegardées avec succès.' });
+    } catch (err) {
+      console.error('Erreur mise à jour des politiques :', err);
+      setPolicyFeedback({ type: 'error', message: 'Impossible d’enregistrer les modifications.' });
+    } finally {
+      setIsSavingPolicies(false);
     }
   };
 
@@ -215,7 +286,48 @@ export default function AdminPage() {
               </div>
             </article>
           </section>
- 
+
+          <section className="policy-section container-card">
+            <header className="section-header">
+              <h2>Politiques &amp; CGU</h2>
+              <span className="policy-updated">
+                Dernière mise à jour {policies.updated_at ? new Date(policies.updated_at).toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+              </span>
+            </header>
+            <div className="policy-editor-grid">
+              <label htmlFor="privacy-editor">Politique de confidentialité</label>
+              <textarea
+                id="privacy-editor"
+                className="policy-textarea"
+                value={privacyDraft}
+                onChange={(event) => setPrivacyDraft(event.target.value)}
+              />
+
+              <label htmlFor="terms-editor">Conditions générales d'utilisation</label>
+              <textarea
+                id="terms-editor"
+                className="policy-textarea"
+                value={termsDraft}
+                onChange={(event) => setTermsDraft(event.target.value)}
+              />
+
+              <div className="policy-actions">
+                {policyFeedback && (
+                  <span className={`policy-status ${policyFeedback.type}`}>
+                    {policyFeedback.message}
+                  </span>
+                )}
+                <button
+                  className="view-answer-btn policy-save-btn"
+                  disabled={isSavingPolicies}
+                  onClick={handleSavePolicies}
+                >
+                  {isSavingPolicies ? 'Sauvegarde en cours…' : 'Enregistrer les modifications'}
+                </button>
+              </div>
+            </div>
+          </section>
+
           {/* Feedback List */}
           <section className="feedback-section container-card">
             <header className="section-header">

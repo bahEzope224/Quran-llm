@@ -1,7 +1,8 @@
 import json
+from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
-from app.models.schemas import FeedbackRequest
+from app.models.schemas import FeedbackRequest, PolicyDocument, PolicyUpdateRequest
 from app.core.exceptions import ResourceNotFoundException, AuthException
 
 from app.services.auth import get_current_admin
@@ -15,6 +16,35 @@ router = APIRouter(
 DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 FEEDBACK_FILE = DATA_DIR / "feedback.jsonl"
 BUG_FILE = DATA_DIR / "bug_log.json"
+POLICY_FILE = DATA_DIR / "policies.json"
+
+DEFAULT_POLICY_DATA = {
+    "privacy_text": "Nous ne recueillons pas de données personnelles identifiables lors des conversations. Les discussions sont enregistrées de manière strictement anonyme pour améliorer la précision du modèle. Les données sont protégées dans une infrastructure conforme, avec des accès limités à l'équipe de maintenance.",
+    "terms_text": "En utilisant ILM AI, vous reconnaissez que les réponses fournies ne remplacent pas un avis juridique ou religieux autorisé. Vous vous engagez à poser des questions respectueuses, à ne pas tenter d'abuser du service (spams, injections) et à signaler toute information incorrecte via la fonctionnalité de feedback. Le service est fourni tel quel sans garantie implicite de disponibilité, et vous acceptez que la responsabilité de l'équipe se limite à la correction de bugs signalés.",
+}
+
+def _load_policy_record() -> dict[str, str]:
+    if POLICY_FILE.exists():
+        try:
+            raw = json.loads(POLICY_FILE.read_text(encoding="utf-8"))
+            return {
+                "privacy_text": raw.get("privacy_text", DEFAULT_POLICY_DATA["privacy_text"]),
+                "terms_text": raw.get("terms_text", DEFAULT_POLICY_DATA["terms_text"]),
+                "updated_at": raw.get("updated_at"),
+            }
+        except json.JSONDecodeError:
+            print(f"CRITICAL ERROR (Admin): Impossible de parser {POLICY_FILE}, reinitialisation des politiques.")
+    record = {
+        **DEFAULT_POLICY_DATA,
+        "updated_at": datetime.utcnow().isoformat() + "Z",
+    }
+    _persist_policy_record(record)
+    return record
+
+
+def _persist_policy_record(record: dict[str, str | None]) -> None:
+    POLICY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    POLICY_FILE.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
 
 def get_all_feedbacks():
     """Recupere tous les feedbacks du fichier JSONL sans risquer de crash 500."""
@@ -123,3 +153,27 @@ async def delete_feedback(timestamp: str):
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
             
     return {"status": "deleted"}
+
+
+@router.get("/policies", response_model=PolicyDocument)
+async def get_policies():
+    return PolicyDocument(**_load_policy_record())
+
+
+@router.patch("/policies", response_model=PolicyDocument)
+async def update_policies(payload: PolicyUpdateRequest):
+    if payload.privacy_text is None and payload.terms_text is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Au moins un champ (confidentialité ou CGU) doit être fourni.",
+        )
+
+    record = _load_policy_record()
+    if payload.privacy_text is not None:
+        record["privacy_text"] = payload.privacy_text.strip()
+    if payload.terms_text is not None:
+        record["terms_text"] = payload.terms_text.strip()
+
+    record["updated_at"] = datetime.utcnow().isoformat() + "Z"
+    _persist_policy_record(record)
+    return PolicyDocument(**record)

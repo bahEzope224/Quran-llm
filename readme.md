@@ -155,6 +155,14 @@ N'hésitez pas à :
 
 ---
 
+## 📦 Déploiement
+
+- **Journalisation des conversations** : chaque réponse est enregistrée de façon anonyme dans `backend/data/conversation_logs.jsonl`. En production, montez `backend/data` sur un volume persistant et prévoyez une tâche batch (cron, script) pour purger ou archiver les anciennes entrées afin d'éviter une croissance infinie et rester conforme aux règles RGPD.
+- **Politiques dynamiques** : les textes de confidentialité et des CGU sont stockés dans `backend/data/policies.json` et peuvent être mis à jour via le tableau de bord Admin. Vérifiez que ce fichier est accessible en écriture par l'API pour que les modifications soient prises en compte automatiquement.
+- **Build frontend** : `npm run build` produit `frontend/dist/`, prêt à être servi par votre hébergeur (Vercel, Railway, CDN). Copiez ce dossier vers la destination de production et redirigez `/privacy`/`/cgu` si vous desservez les pages statiques séparément.
+
+---
+
 ## 📄 Licence
 
 Ce projet est distribué sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
@@ -166,5 +174,4 @@ Ce projet est distribué sous licence **MIT**. Voir le fichier [LICENSE](LICENSE
 Made with ❤️ 
 
 </div>
-
 

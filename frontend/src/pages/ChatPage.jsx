@@ -26,6 +26,8 @@ const fallbackProfile = {
   language: 'Francais',
   mode: 'Clair',
   notifications_enabled: true,
+  accepted_privacy: false,
+  accepted_cgu: false,
 };
 
 function truncateTitle(text) {
@@ -298,6 +300,8 @@ export default function ChatPage() {
           language: nextProfile.language,
           mode: nextProfile.mode,
           notifications_enabled: nextProfile.notifications_enabled,
+          accepted_privacy: nextProfile.accepted_privacy,
+          accepted_cgu: nextProfile.accepted_cgu,
         }),
       });
 

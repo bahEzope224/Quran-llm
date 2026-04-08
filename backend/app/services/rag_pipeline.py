@@ -9,6 +9,7 @@ from app.services.llm import (
     translate_text_to_french,
 )
 from app.services.retriever import retrieve_relevant_chunks
+from app.services.conversation_logger import record_conversation
 
 SOURCE_PRIORITY = ["quran", "seerah", "hadith", "tafsir", "fatwa"]
 # Map pour la classification des questions
@@ -767,6 +768,17 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
             # Mode normal pour les avis juridiques (obligation/prohibition)
             generated = generate_answer(prompt=prompt, context_chunks=final_display_chunks)
             answer = generated["answer"]
+
+    try:
+        record_conversation(
+            payload.question,
+            answer,
+            final_display_chunks,
+            payload.profile.dict(),
+            payload.mode,
+        )
+    except Exception as exc:
+        print(f"DEBUG: Failed to log conversation: {exc}")
 
     return ChatResponse(
         answer=answer,

@@ -965,7 +965,13 @@ export default function ChatPage() {
               <div className="settings-grid">
                 <label className="setting-field">
                   <span>Ecole juridique</span>
-                  <select value={profile.legal_school} onChange={() => {}} disabled={isLoadingProfile}>
+                  <select
+                    value={profile.legal_school}
+                    onChange={(event) =>
+                      setProfile((prev) => ({ ...prev, legal_school: event.target.value }))
+                    }
+                    disabled={isLoadingProfile}
+                  >
                     {legalSchools.map((school) => (
                       <option key={school} value={school}>
                         {school}
@@ -976,7 +982,13 @@ export default function ChatPage() {
 
                 <label className="setting-field">
                   <span>Langue</span>
-                  <select value={profile.language} onChange={() => {}} disabled={isLoadingProfile}>
+                  <select
+                    value={profile.language}
+                    onChange={(event) =>
+                      setProfile((prev) => ({ ...prev, language: event.target.value }))
+                    }
+                    disabled={isLoadingProfile}
+                  >
                     {languages.map((language) => (
                       <option key={language} value={language}>
                         {language}
@@ -987,7 +999,13 @@ export default function ChatPage() {
 
                 <label className="setting-field">
                   <span>Mode</span>
-                  <select value={profile.mode} onChange={() => {}} disabled={isLoadingProfile}>
+                  <select
+                    value={profile.mode}
+                    onChange={(event) =>
+                      setProfile((prev) => ({ ...prev, mode: event.target.value }))
+                    }
+                    disabled={isLoadingProfile}
+                  >
                     {modes.map((mode) => (
                       <option key={mode} value={mode}>
                         {mode}

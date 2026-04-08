@@ -240,6 +240,7 @@ export default function ChatPage() {
   const [isLoadingChat, setIsLoadingChat] = useState(false);
   const [isAnimatingAnswer, setIsAnimatingAnswer] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [chatError, setChatError] = useState('');
   const [profileError, setProfileError] = useState('');
   const abortControllerRef = useRef(null);
@@ -285,6 +286,40 @@ export default function ChatPage() {
 
     loadProfile();
   }, []);
+
+  async function persistProfile(nextProfile) {
+    setIsSavingProfile(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/profile`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          legal_school: nextProfile.legal_school,
+          language: nextProfile.language,
+          mode: nextProfile.mode,
+          notifications_enabled: nextProfile.notifications_enabled,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('profile_update_failed');
+      }
+
+      const data = await response.json();
+      setProfile(data);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du profil :', error);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }
+
+  const handleProfileChange = (field) => (event) => {
+    const value = event.target.value;
+    const nextProfile = { ...profile, [field]: value };
+    setProfile(nextProfile);
+    void persistProfile(nextProfile);
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -967,10 +1002,8 @@ export default function ChatPage() {
                   <span>Ecole juridique</span>
                   <select
                     value={profile.legal_school}
-                    onChange={(event) =>
-                      setProfile((prev) => ({ ...prev, legal_school: event.target.value }))
-                    }
-                    disabled={isLoadingProfile}
+                    onChange={handleProfileChange('legal_school')}
+                    disabled={isLoadingProfile || isSavingProfile}
                   >
                     {legalSchools.map((school) => (
                       <option key={school} value={school}>
@@ -984,10 +1017,8 @@ export default function ChatPage() {
                   <span>Langue</span>
                   <select
                     value={profile.language}
-                    onChange={(event) =>
-                      setProfile((prev) => ({ ...prev, language: event.target.value }))
-                    }
-                    disabled={isLoadingProfile}
+                    onChange={handleProfileChange('language')}
+                    disabled={isLoadingProfile || isSavingProfile}
                   >
                     {languages.map((language) => (
                       <option key={language} value={language}>
@@ -1001,10 +1032,8 @@ export default function ChatPage() {
                   <span>Mode</span>
                   <select
                     value={profile.mode}
-                    onChange={(event) =>
-                      setProfile((prev) => ({ ...prev, mode: event.target.value }))
-                    }
-                    disabled={isLoadingProfile}
+                    onChange={handleProfileChange('mode')}
+                    disabled={isLoadingProfile || isSavingProfile}
                   >
                     {modes.map((mode) => (
                       <option key={mode} value={mode}>

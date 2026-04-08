@@ -86,6 +86,127 @@ TOPIC_METADATA = {
     },
 }
 
+QURAN_STRUCTURE_FACTS = [
+    {
+        "triggers": [
+            "combien de sourate",
+            "nombre de sourate",
+            "total des sourates",
+            "combien de chapitres",
+            "nombre de chapitres",
+            "how many surahs",
+            "how many chapters",
+        ],
+        "answer": "Le Coran se compose de 114 sourates, de la Fatiha (1) jusqu'a An-Nas (114).",
+    },
+    {
+        "triggers": [
+            "combien de verset",
+            "nombre de verset",
+            "nombre d'ayat",
+            "combien d'ayat",
+            "how many verses",
+            "how many ayat",
+            "how many aya",
+            "how many verses are there",
+        ],
+        "answer": "La compilation canonique compte 6 236 versets (ayat) selon la disposition traditionnelle de l'edition hafs.",
+    },
+    {
+        "triggers": [
+            "combien de partie",
+            "nombre de partie",
+            "combien de juz",
+            "combien de partitions",
+            "nombre de sections",
+            "how many parts",
+            "how many juz",
+            "how many sections",
+        ],
+        "answer": "Le texte est découpé en 30 juz', facilitant la récitation sur un mois.",
+    },
+    {
+        "triggers": [
+            "combien de hizb",
+            "nombre de hizb",
+            "combien de hizb",
+            "division du hizb",
+            "how many hizb",
+            "how many hizbs",
+        ],
+        "answer": "Chaque juz' est divisé en deux hizb, soit 60 hizb en tout.",
+    },
+    {
+        "triggers": [
+            "verset le plus long",
+            "plus long verset",
+            "quel est le verset le plus long",
+            "longest verse",
+            "which verse is the longest",
+        ],
+        "answer": "Le verset le plus long est le 282 de la sourate Al-Baqarah (2:282) ; il porte sur le contrat de dette et la cohésion des témoins.",
+    },
+    {
+        "triggers": [
+            "sourate la plus longue",
+            "chapitre le plus long",
+            "quelle sourate est la plus longue",
+            "longest surah",
+            "which surah is the longest",
+        ],
+        "answer": "La sourate la plus longue est Al-Baqarah (2) avec 286 versets, elle ouvre la médine.",
+    },
+    {
+        "triggers": [
+            "sourate la plus courte",
+            "chapitre le plus court",
+            "quel est le plus petit chapitre",
+            "shortest surah",
+            "which surah is the shortest",
+        ],
+        "answer": "La plus courte est Al-Kawthar (108) avec trois versets, une invocation de gratitude.",
+    },
+]
+
+PROPHET_MENTION_COUNTS = [
+    {
+        "name": "Muhammad",
+        "variants": ["muhammad", "mohammad", "mohamed", "mohammed"],
+        "count": 4,
+        "note": "Le nom Muhammad est cité quatre fois dans le Coran selon les lectures classiques.",
+    },
+    {
+        "name": "Moussa (Moïse)",
+        "variants": ["moussa", "musa", "moise"],
+        "count": 136,
+        "note": "Moussa est le prophète le plus cité avec 136 occurrences.",
+    },
+    {
+        "name": "Ibrahim (Abraham)",
+        "variants": ["ibrahim", "ibrahime", "abraham"],
+        "count": 69,
+        "note": "Ibrahim apparaît 69 fois dans le texte coranique.",
+    },
+    {
+        "name": "Nuh (Noé)",
+        "variants": ["nuh", "nouh", "noe", "noah"],
+        "count": 28,
+        "note": "Nuh est mentionné 28 fois.",
+    },
+    {
+        "name": "Yusuf (Joseph)",
+        "variants": ["yusuf", "joseph", "yosef"],
+        "count": 27,
+        "note": "Yusuf est cité 27 fois.",
+    },
+    {
+        "name": "Isa (Jésus)",
+        "variants": ["isa", "jesus", "issa"],
+        "count": 25,
+        "note": "Isa (Jésus) est mentionné 25 fois par son nom.",
+    },
+]
+
 
 def _localize_chunks(chunks: list[dict[str, str]], translate_content: bool = True) -> list[dict[str, str]]:
     """Prepare les chunks pour l'affichage (avec traduction proactive pour Tafsir/Hadith)."""
@@ -102,6 +223,79 @@ def _localize_chunks(chunks: list[dict[str, str]], translate_content: bool = Tru
             
         localized_chunks.append(localized_chunk)
     return localized_chunks
+
+
+def _extract_query_keywords(question: str, english_query: str) -> set[str]:
+    """Extracte les mots-ressembleants aux mots-cles pour comparer avec les chunks."""
+    combined = f"{question.lower()} {english_query.lower()}"
+    return set(re.findall(r"\w{4,}", combined))
+
+
+def _extract_chunk_keywords(chunk: dict[str, str]) -> set[str]:
+    """Retourne les mots de longueur 4+ contenus dans un chunk avec son ref."""
+    combined = " ".join(
+        filter(None, [chunk.get("content", ""), chunk.get("ref", ""), chunk.get("source", "")])
+    )
+    return set(re.findall(r"\w{4,}", combined.lower()))
+
+
+def _restrict_redundant_sources(
+    chunks: list[dict[str, str]], question: str, english_query: str, max_sources: int = 3
+) -> list[dict[str, str]]:
+    """Limite les sources aux chunks qui apportent un vrai signal pour la question."""
+    keywords = _extract_query_keywords(question, english_query)
+    trimmed: list[dict[str, str]] = []
+    covered_keywords: set[str] = set()
+    seen_scriptures: set[str] = set()
+
+    for chunk in chunks:
+        chunk_type = chunk.get("type")
+        chunk_keywords = _extract_chunk_keywords(chunk)
+        relevant_keywords = chunk_keywords & keywords
+
+        if chunk_type in {"quran", "hadith", "seerah"}:
+            if chunk_type in seen_scriptures:
+                continue
+            seen_scriptures.add(chunk_type)
+            trimmed.append(chunk)
+            covered_keywords.update(relevant_keywords)
+            continue
+
+        if keywords and not relevant_keywords:
+            continue
+
+        if relevant_keywords - covered_keywords:
+            trimmed.append(chunk)
+            covered_keywords.update(relevant_keywords)
+        elif len(trimmed) < max_sources:
+            trimmed.append(chunk)
+            covered_keywords.update(relevant_keywords)
+        else:
+            continue
+
+        if len(trimmed) >= max_sources and chunk_type not in {"quran"}:
+            break
+
+    return trimmed[:max_sources]
+
+
+def _answer_structure_question(question: str) -> str | None:
+    """Repere les questions sur la forme du Coran et renvoie une reponse factuelle."""
+    normalized = question.lower()
+    for fact in QURAN_STRUCTURE_FACTS:
+        if any(trigger in normalized for trigger in fact["triggers"]):
+            return fact["answer"]
+
+    if not any(term in normalized for term in ("prophète", "prophete", "prophet", "messager")):
+        return None
+
+    if not any(term in normalized for term in ("combien", "nombre", "fois", "mention", "cite", "citer")):
+        return None
+
+    for prophet in PROPHET_MENTION_COUNTS:
+        if any(variant in normalized for variant in prophet["variants"]):
+            return prophet["note"]
+    return None
 
 
 def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english_query: str = "", intent: str | None = None) -> str:
@@ -123,7 +317,10 @@ def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english
             "REPONSE: "
         )
     else:
-        persona = "Tu es un assistant musulman expert, factuel et TRES CONCIS (1 a 2 phrases)."
+        persona = (
+            "Tu es un assistant musulman expert, factuel et TRES CONCIS (1 a 2 phrases). "
+            "Formule la reponse en francais naturel, fluide et chaleureux, comme un conseiller bienveillant."
+        )
         return (
             f"{persona}\n\n"
             "INSTRUCTION CRITIQUE: Ne reponds qu'avec les informations PRESENTES dans les sources.\n"
@@ -390,6 +587,10 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
             sources=[],
         )
 
+    structure_answer = _answer_structure_question(payload.question)
+    if structure_answer:
+        return ChatResponse(answer=structure_answer, sources=[])
+
     # 2. Traduction de la question (avec Hybridation par mots-cles)
     english_query = translate_french_to_english(payload.question)
     
@@ -508,7 +709,7 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     # 6. Couplage Automatique Verset -> Tafsir (Enrichissement)
     final_display_chunks = []
     from app.services.retriever import retrieve_tafsir_by_ref
-    
+
     for chunk in initial_top_chunks:
         final_display_chunks.append(chunk)
         if chunk["type"] == "quran":
@@ -519,6 +720,10 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
                 if not any(c["ref"] == tafsir["ref"] for c in final_display_chunks):
                     print(f"DEBUG: Auto-coupling Tafsir for {chunk['ref']} (Post-Top3)")
                     final_display_chunks.append(tafsir)
+
+    reduced_chunks = _restrict_redundant_sources(final_display_chunks, payload.question, english_query)
+    if reduced_chunks:
+        final_display_chunks = reduced_chunks
 
     if not final_display_chunks:
         return ChatResponse(

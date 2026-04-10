@@ -216,16 +216,21 @@ def _filter_used_sources(answer: str, sources: list[dict]) -> list[dict]:
     if _is_negative_answer(answer):
         return []
 
-    # On cherche les references citees (ex: 2:173)
+    # On cherche les references citees (ex: 2:173 ou [Coran 2:173])
     used = []
+    lower_answer = answer.lower()
     for s in sources:
         ref = s.get("ref", "")
-        if ref and ref.lower() in answer.lower():
+        # On verifie si la reference est presente (ex: "2:282")
+        # On nettoie la ref pour la recherche (ex: "Quran 2:173" -> "2:173")
+        clean_ref = ref.replace("Quran ", "").replace("Sahih Muslim ", "").lower()
+        if clean_ref in lower_answer or ref.lower() in lower_answer:
             used.append(s)
 
-    # Si l'IA a repondu mais n'a pas mis les balises [ref], on garde tout par defaut
-    # pour eviter de faire disparaitre des sources pertinentes
-    return used if used else sources
+    # STRICT: Si aucune source n'est citee par son nom, on considere qu'aucune n'est utilisee.
+    # Cela evite l'affichage de sources parasites "au hasard".
+    return used
+
 
 
 def generate_answer(prompt: str, context_chunks: list[dict], options: dict | None = None) -> dict:

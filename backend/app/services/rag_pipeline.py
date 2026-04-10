@@ -840,30 +840,25 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     
     if direct_answer:
         answer = direct_answer
-    else:
-        # 7. Generation contextuelle via LLM
-        intent = _detect_intent(_normalize_question(payload.question))
-        prompt = build_rag_prompt(
-            payload=payload, 
-            chunks=llm_chunks,  # ← chunks enrichis avec traduction FR
-            english_query=semantic_query, 
-            intent=intent
-        )
-        if intent == "identification" and not direct_answer:
-            # Mode Chat (generate_answer) pour le heros, car _generate est trop sec
-            # Le persona "biographe fidele" est injecte par build_rag_prompt
-            generated = generate_answer(prompt=prompt, context_chunks=llm_chunks)
-            answer = generated["answer"]
-        else:
-            # Mode normal pour les avis juridiques (obligation/prohibition)
-            generated = generate_answer(prompt=prompt, context_chunks=llm_chunks)
-            answer = generated["answer"]
+    # 7. Generation contextuelle via LLM
+    intent = _detect_intent(_normalize_question(payload.question))
+    prompt = build_rag_prompt(
+        payload=payload, 
+        chunks=llm_chunks,  # ← chunks enrichis avec traduction FR
+        english_query=semantic_query, 
+        intent=intent
+    )
+    
+    # On génère la réponse et on capture AUSSI les sources filtrées par l'IA
+    llm_result = generate_answer(prompt=prompt, context_chunks=llm_chunks)
+    answer = llm_result["answer"]
+    final_sources = llm_result["sources"]
 
     try:
         record_conversation(
             payload.question,
             answer,
-            final_display_chunks,
+            final_display_chunks, # On logue les chunks bruts pour debug
             payload.profile.dict(),
             payload.mode,
         )
@@ -872,5 +867,6 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
 
     return ChatResponse(
         answer=answer,
-        sources=_build_sources_from_chunks(display_chunks),
+        sources=_build_sources_from_chunks(final_sources),
     )
+

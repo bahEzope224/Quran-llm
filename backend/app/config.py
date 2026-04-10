@@ -16,20 +16,17 @@ class Settings(BaseModel):
     default_language: str = "fr"
     default_mode: str = "clair"
     llm_provider: str = Field(
-        default_factory=lambda: os.getenv("LLM_PROVIDER", "ollama")
+        default_factory=lambda: os.getenv("LLM_PROVIDER", "openai")
     )
     llm_api_key: str | None = Field(default_factory=lambda: os.getenv("LLM_API_KEY"))
     llm_base_url: str = Field(
-        default_factory=lambda: os.getenv(
-            "LLM_BASE_URL",
-            "http://127.0.0.1:11434/api/chat",
-        )
+        default_factory=lambda: os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
     )
     llm_model: str = Field(
-        default_factory=lambda: os.getenv("LLM_MODEL", "qwen2.5-coder:7b")
+        default_factory=lambda: os.getenv("LLM_MODEL", "gpt-4o-mini")
     )
     llm_translation_model: str = Field(
-        default_factory=lambda: os.getenv("LLM_TRANSLATION_MODEL", "llama3.2:1b")
+        default_factory=lambda: os.getenv("LLM_TRANSLATION_MODEL", "gpt-4o-mini")
     )
     llm_timeout_seconds: float = Field(
         default_factory=lambda: float(os.getenv("LLM_TIMEOUT_SECONDS", "60"))

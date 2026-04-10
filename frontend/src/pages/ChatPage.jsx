@@ -105,7 +105,9 @@ function toSourceCard(source, index) {
         ? 'auto_stories'
         : source.type === 'tafsir'
           ? 'menu_book'
-          : 'history_edu',
+          : source.type === 'seerah'
+            ? 'history_edu'
+            : 'history_edu',
     source: displaySourceName,
     reference: source.ref,
     role: source.role,
@@ -113,6 +115,7 @@ function toSourceCard(source, index) {
     title: source.arabic ?? '',
     translation: source.text,
     content: source.text,
+    url: source.url,
     translationSource: source.translation_source,
   };
 }
@@ -165,9 +168,16 @@ function SourceCard({ card }) {
           <span className="source-card-reference">{card.reference}</span>
         </div>
       </div>
-      <p className={`source-card-text ${card.type === 'hadith' ? 'italic' : ''}`}>
-        "{card.content}"
-      </p>
+      {card.type === 'seerah' && card.url ? (
+        <a href={card.url} target="_blank" rel="noopener noreferrer" className="source-link-btn">
+          <span className="material-symbols-outlined">open_in_new</span>
+          <span>Consulter la source complète</span>
+        </a>
+      ) : (
+        <p className={`source-card-text ${card.type === 'hadith' ? 'italic' : ''}`}>
+          "{card.content}"
+        </p>
+      )}
     </article>
   );
 }
@@ -952,6 +962,13 @@ export default function ChatPage() {
                                       </p>
                                       <p className="proof-excerpt">"{card.translation}"</p>
                                     </>
+                                  ) : card.type === 'seerah' && card.url ? (
+                                    <div style={{ marginTop: '12px' }}>
+                                      <a href={card.url} target="_blank" rel="noopener noreferrer" className="source-link-btn">
+                                        <span className="material-symbols-outlined">open_in_new</span>
+                                        <span>Voir le chapitre complet</span>
+                                      </a>
+                                    </div>
                                   ) : (
                                     <p
                                       className={`proof-excerpt ${

@@ -1205,6 +1205,10 @@ a {
   border-left: 4px solid var(--tertiary);
 }
 
+.proof-item.seerah .proof-item-content {
+  border-left: 4px solid #d97706; /* Amber for Seerah */
+}
+
 .proof-item-header {
   display: flex;
   align-items: flex-start;
@@ -1279,6 +1283,11 @@ a {
   border-left-color: var(--tertiary);
 }
 
+.source-card.seerah {
+  background: #fffcf0;
+  border-left-color: #d97706;
+}
+
 .source-card-header {
   display: flex;
   align-items: flex-start;
@@ -1320,6 +1329,10 @@ a {
   color: var(--tertiary);
 }
 
+.source-card.seerah .source-card-header {
+  color: #d97706;
+}
+
 .arabic-text {
   margin: 0 0 8px;
   font-family: 'Amiri', serif;
@@ -1333,6 +1346,29 @@ a {
   font-size: 0.75rem;
   font-style: italic;
   color: var(--text-muted);
+}
+
+.source-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.source-link-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border-color: currentColor;
 }
 
 .source-card-translation-source {

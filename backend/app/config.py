@@ -38,15 +38,15 @@ class Settings(BaseModel):
         default_factory=lambda: float(os.getenv("LLM_TEMPERATURE", "0.2"))
     )
     embeddings_provider: str = Field(
-        default_factory=lambda: os.getenv("EMBEDDINGS_PROVIDER", "ollama")
+        default_factory=lambda: os.getenv("EMBEDDINGS_PROVIDER", "openai")
     )
     embeddings_model: str = Field(
-        default_factory=lambda: os.getenv("EMBEDDINGS_MODEL", "all-minilm:latest")
+        default_factory=lambda: os.getenv("EMBEDDINGS_MODEL", "text-embedding-3-small")
     )
     embeddings_base_url: str = Field(
         default_factory=lambda: os.getenv(
             "EMBEDDINGS_BASE_URL",
-            "http://127.0.0.1:11434/api/embed",
+            "https://api.openai.com/v1/embeddings",
         )
     )
     embeddings_candidate_pool: int = Field(

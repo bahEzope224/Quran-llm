@@ -79,7 +79,15 @@ def _call_embedding_provider(
         http_request = _build_request(base_url, batch)
         with request.urlopen(http_request, timeout=settings.llm_timeout_seconds) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
-            batch_embeddings = response_payload.get("embeddings", [])
+            
+            # Support format OpenAI: {"data": [{"embedding": [...]}, ...]}
+            # Support format Ollama: {"embeddings": [[...], ...]}
+            batch_embeddings = []
+            if "data" in response_payload and isinstance(response_payload["data"], list):
+                batch_embeddings = [item["embedding"] for item in response_payload["data"] if "embedding" in item]
+            else:
+                batch_embeddings = response_payload.get("embeddings", [])
+                
             status_code = getattr(response, "status", response.getcode())
             duration = time.perf_counter() - start
             if isinstance(batch_embeddings, list) and batch_embeddings:

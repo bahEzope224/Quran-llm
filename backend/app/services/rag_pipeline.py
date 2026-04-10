@@ -746,7 +746,7 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     if not has_strong_scripture and initial_top_chunks:
         from app.db.vector_store import _search_fatwa_entries
         print("DEBUG: Fallback to Fatwa search (Scriptural scores too low)")
-        fatwa_matches = _search_fatwa_entries(query=english_query, top_k=2)
+        fatwa_matches = _search_fatwa_entries(query=semantic_query, top_k=2)
         if fatwa_matches:
             # On preserve les sources scripturaires deja trouvees meme si faibles
             scriptures = [c for c in initial_top_chunks if c["type"] in ["quran", "hadith", "seerah"]]
@@ -774,7 +774,7 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
                     print(f"DEBUG: Auto-coupling Tafsir for {chunk['ref']} (Post-Top3)")
                     final_display_chunks.append(tafsir)
 
-    reduced_chunks = _restrict_redundant_sources(final_display_chunks, payload.question, english_query)
+    reduced_chunks = _restrict_redundant_sources(final_display_chunks, payload.question, semantic_query)
     if reduced_chunks:
         final_display_chunks = reduced_chunks
 
@@ -806,7 +806,7 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
         prompt = build_rag_prompt(
             payload=payload, 
             chunks=llm_chunks,  # ← chunks enrichis avec traduction FR
-            english_query=english_query, 
+            english_query=semantic_query, 
             intent=intent
         )
         if intent == "identification" and not direct_answer:

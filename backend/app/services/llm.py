@@ -197,6 +197,37 @@ def _clean_translated_text(text: str) -> str:
     return cleaned
 
 
+def _is_negative_answer(answer: str) -> bool:
+    """Detecte si la reponse indique une absence d'information dans les sources."""
+    negative_patterns = [
+        r"n'est pas disponible dans les textes fournis",
+        r"n'est pas mentionn",
+        r"n'a pas été trouvé",
+        r"ne précisent pas",
+        r"aucune information n'est fournie",
+        r"désolé, je n'ai pas trouvé",
+        r"je n'ai pas de preuve",
+    ]
+    return any(re.search(pattern, answer, re.IGNORECASE) for pattern in negative_patterns)
+
+
+def _filter_used_sources(answer: str, sources: list[dict]) -> list[dict]:
+    """Ne conserve que les sources dont la reference est citee dans la reponse (ou vide si negatif)."""
+    if _is_negative_answer(answer):
+        return []
+
+    # On cherche les references citees (ex: 2:173)
+    used = []
+    for s in sources:
+        ref = s.get("ref", "")
+        if ref and ref.lower() in answer.lower():
+            used.append(s)
+
+    # Si l'IA a repondu mais n'a pas mis les balises [ref], on garde tout par defaut
+    # pour eviter de faire disparaitre des sources pertinentes
+    return used if used else sources
+
+
 def generate_answer(prompt: str, context_chunks: list[dict], options: dict | None = None) -> dict:
     """Genere une reponse finale a partir d'un prompt et de contextes."""
     # Par defaut, on garde un peu de structure
@@ -226,9 +257,12 @@ def generate_answer(prompt: str, context_chunks: list[dict], options: dict | Non
     ]
     answer = _post_chat(messages, temperature=default_options.get("temperature"))
     if not answer:
-        return {"answer": _fallback_answer(context_chunks)}
+        return {"answer": _fallback_answer(context_chunks), "sources": context_chunks}
 
-    return {"answer": answer, "sources": context_chunks}
+    # Filtrage intelligent des sources pour eviter les hallucinations de contexte
+    final_sources = _filter_used_sources(answer, context_chunks)
+    
+    return {"answer": answer, "sources": final_sources}
 
 
 def translate_text_to_french(text: str, force: bool = False) -> str:

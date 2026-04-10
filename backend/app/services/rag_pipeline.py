@@ -372,6 +372,7 @@ def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english
             f"{persona}\n\n"
             f"{quran_note}"
             "INSTRUCTION CRITIQUE: Ne reponds qu'avec les informations PRESENTES dans les sources.\n"
+            "CITATION: Cite TOUJOURS la reference de la source utilisee entre crochets (ex: [Coran 2:173] ou [Sahih Muslim (15c)]) pour appuyer tes propos.\n"
             "Si la question porte sur un chiffre (age, nombre) absent des sources, declare que l'information n'est pas disponible dans les textes fournis.\n\n"
             f"SOURCES:\n{context_block}\n\n"
             f"QUESTION: {payload.question}\n"
@@ -502,13 +503,16 @@ def _prune_irrelevant_chunks(chunks: list[dict], english_query: str) -> list[dic
                 continue
 
         # Si le score est tres eleve, on garde (confiance semantique)
-        if chunk.get("semantic_score", 0) > 0.8:
+        if chunk.get("semantic_score", 0) > 0.82: # Monte legerement le seuil de confiance brute
             pruned.append(chunk)
             continue
             
         # Sinon, verification de presence de mots-cles
+        # On exige au moins UN mot-cle significatif pour les sources non-coraniques
         if any(kw in content for kw in keywords):
             pruned.append(chunk)
+        else:
+            print(f"DEBUG: Pruning chunk {chunk.get('ref')} - No lexical match with keywords: {keywords}")
             
     return pruned
 

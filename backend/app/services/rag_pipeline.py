@@ -633,6 +633,7 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
         return ChatResponse(answer=structure_answer, sources=[])
 
     # 2. Traduction de la question (EN pur pour la recherche sémantique)
+    lower_question = payload.question.lower()
     semantic_query = translate_french_to_english(payload.question)
     
     # Lexical query (Hybride EN + FR original pour le BM25/Filtres)

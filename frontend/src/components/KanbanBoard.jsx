@@ -23,9 +23,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 
 const COLUMNS = [
-  { id: 'Nouvelle tâche', title: 'Nouvelle tâche', color: 'bg-slate-100 text-slate-500' },
-  { id: 'En cours', title: 'En cours', color: 'bg-amber-100 text-amber-600' },
-  { id: 'Terminée', title: 'Terminée', color: 'bg-emerald-100 text-emerald-600' }
+  { id: 'Nouvelle tâche', title: 'À faire', icon: 'list_alt', color: 'text-slate-400', bg: 'bg-slate-100/50' },
+  { id: 'En cours', title: 'En cours', icon: 'bolt', color: 'text-amber-500', bg: 'bg-amber-50/50' },
+  { id: 'Terminée', title: 'Terminée', icon: 'check_circle', color: 'text-emerald-500', bg: 'bg-emerald-50/50' }
 ];
 
 function SortableTask({ task, onDelete, onEdit }) {
@@ -48,31 +48,37 @@ function SortableTask({ task, onDelete, onEdit }) {
     <div 
       ref={setNodeRef} 
       style={style} 
-      className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-3 group relative cursor-default"
+      className="group bg-white p-5 rounded-2xl border border-slate-200/60 shadow-[0_4px_12px_rgba(0,0,0,0.02)] mb-4 hover:shadow-[0_12px_24px_rgba(0,0,0,0.06)] hover:border-emerald-500/20 transition-all duration-300 relative cursor-default"
     >
-      <div className="flex justify-between items-start mb-2">
-        <h4 className="text-sm font-bold text-slate-900 pr-8">{task.title}</h4>
-        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-400 p-1">
-          <span className="material-symbols-outlined text-base">drag_indicator</span>
+      <div className="flex justify-between items-start gap-3 mb-3">
+        <h4 className="text-[13px] font-bold text-slate-800 leading-snug pr-6 tracking-tight">{task.title}</h4>
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-200 hover:text-slate-400 p-1 transition-colors">
+          <span className="material-symbols-outlined text-lg">drag_indicator</span>
         </div>
       </div>
       
-      {task.description && <p className="text-xs text-slate-500 line-clamp-2 mb-3">{task.description}</p>}
+      {task.description && (
+        <p className="text-[11px] text-slate-400 leading-relaxed font-medium line-clamp-2 mb-4">
+          {task.description}
+        </p>
+      )}
       
-      <div className="flex items-center justify-between">
-        {task.date ? (
-          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-            <span className="material-symbols-outlined text-xs">calendar_today</span>
-            {task.date}
-          </span>
-        ) : <div />}
+      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+        <div className="flex items-center gap-2">
+          {task.date ? (
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg">
+              <span className="material-symbols-outlined text-[12px] text-slate-400">calendar_today</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{task.date}</span>
+            </div>
+          ) : <div />}
+        </div>
         
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={() => onEdit(task)} className="p-1 hover:bg-slate-50 rounded text-slate-400 hover:text-emerald-600">
-            <span className="material-symbols-outlined text-sm">edit</span>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+          <button onClick={() => onEdit(task)} className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 rounded-full text-slate-300 hover:text-emerald-600 transition-colors">
+            <span className="material-symbols-outlined text-base">edit_square</span>
           </button>
-          <button onClick={() => onDelete(task.id)} className="p-1 hover:bg-slate-50 rounded text-slate-400 hover:text-rose-600">
-            <span className="material-symbols-outlined text-sm">delete</span>
+          <button onClick={() => onDelete(task.id)} className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 rounded-full text-slate-300 hover:text-rose-600 transition-colors">
+            <span className="material-symbols-outlined text-base">delete</span>
           </button>
         </div>
       </div>
@@ -108,7 +114,7 @@ export default function KanbanBoard() {
         setTasks(data);
       }
     } catch (error) {
-      console.error("Erreur tasks:", error);
+      console.error("Fetch tasks error:", error);
     }
   }
 
@@ -186,7 +192,6 @@ export default function KanbanBoard() {
     const activeId = active.id;
     const overId = over.id;
 
-    // Si on lache sur une colonne (id est dans COLUMNS), on change le statut
     const overColumn = COLUMNS.find(c => c.id === overId);
     
     if (overColumn) {
@@ -196,14 +201,12 @@ export default function KanbanBoard() {
       return;
     }
 
-    // Si on lache sur une autre tache, on peut reordonner (si meme colonne)
     const overTask = tasks.find(t => t.id === overId);
     if (overTask && activeId !== overId) {
       const oldIndex = tasks.findIndex(t => t.id === activeId);
       const newIndex = tasks.findIndex(t => t.id === overId);
       
       const nextTasks = arrayMove(tasks, oldIndex, newIndex);
-      // On met a jour aussi le statut si besoin
       if (nextTasks[newIndex].status !== overTask.status) {
         nextTasks[newIndex].status = overTask.status;
         handleUpdateTaskStatus(activeId, overTask.status);
@@ -213,15 +216,15 @@ export default function KanbanBoard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-black text-slate-900">Task Board</h2>
-          <p className="text-slate-500">Gérez le flux de travail au quotidien.</p>
+          <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Workspace</h2>
+          <p className="text-slate-500 font-medium">Gérez le flux de travail et les micro-tâches techniques.</p>
         </div>
         <button 
           onClick={() => { setEditingTask(null); setNewTask({ title: '', description: '', date: '', status: 'Nouvelle tâche' }); setShowTaskModal(true); }}
-          className="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all active:scale-95"
+          className="bg-slate-900 hover:bg-slate-800 text-white min-h-[52px] px-8 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-[0_12px_24px_rgba(0,0,0,0.15)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
         >
           <span className="material-symbols-outlined text-lg">add_task</span>
           Nouvelle Tâche
@@ -234,15 +237,17 @@ export default function KanbanBoard() {
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           {COLUMNS.map(column => (
-            <div key={column.id} className="bg-slate-50/50 rounded-[32px] p-2 border border-slate-100 min-h-[500px] flex flex-col">
-              <div className="p-4 flex items-center justify-between">
+            <div key={column.id} className="bg-slate-50/40 rounded-[40px] p-3 border border-slate-200/40 min-h-[600px] flex flex-col">
+              <div className="p-5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <span className={`w-2 h-2 rounded-full ${column.color.split(' ')[0]}`} />
-                  <h3 className="font-black text-xs uppercase tracking-widest text-slate-500">{column.title}</h3>
+                  <div className={`w-8 h-8 rounded-xl ${column.bg} flex items-center justify-center`}>
+                    <span className={`material-symbols-outlined text-lg ${column.color}`}>{column.icon}</span>
+                  </div>
+                  <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-500">{column.title}</h3>
                 </div>
-                <span className="bg-white px-2 py-0.5 rounded-lg text-[10px] font-black text-slate-400 border border-slate-100">
+                <span className="bg-white/80 px-2.5 py-1 rounded-lg text-[9px] font-black text-slate-400 border border-slate-100 shadow-sm">
                   {tasks.filter(t => t.status === column.id).length}
                 </span>
               </div>
@@ -258,9 +263,6 @@ export default function KanbanBoard() {
                     />
                   ))}
                 </SortableContext>
-                
-                {/* Zone de drop vide au fond */}
-                <div className="h-20" />
               </div>
             </div>
           ))}
@@ -268,8 +270,9 @@ export default function KanbanBoard() {
 
         <DragOverlay>
           {activeTask ? (
-            <div className="bg-white p-4 rounded-2xl border-2 border-emerald-500 shadow-xl w-[300px] opacity-90 scale-105">
-              <h4 className="text-sm font-bold text-slate-900">{activeTask.title}</h4>
+            <div className="bg-white p-5 rounded-2xl border-2 border-emerald-500 shadow-2xl w-[320px] scale-105 pointer-events-none">
+              <h4 className="text-[13px] font-bold text-slate-900">{activeTask.title}</h4>
+              <p className="text-[10px] text-slate-400 font-medium mt-2">Déplacement en cours...</p>
             </div>
           ) : null}
         </DragOverlay>
@@ -278,34 +281,48 @@ export default function KanbanBoard() {
       {/* Modal Task */}
       <AnimatePresence>
         {showTaskModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowTaskModal(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="relative bg-white rounded-[32px] w-full max-w-lg p-8 shadow-2xl">
-              <h3 className="text-2xl font-black mb-6">{editingTask ? 'Modifier la Tâche' : 'Nouvelle Tâche'}</h3>
-              <div className="space-y-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowTaskModal(false)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.9, opacity: 0, y: 20 }} 
+              className="relative bg-white rounded-[40px] w-full max-w-lg p-10 shadow-[0_40px_80px_rgba(0,0,0,0.25)]"
+            >
+              <div className="flex items-center justify-between mb-8">
                 <div>
-                  <label className="block text-[11px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Titre</label>
-                  <input type="text" value={newTask.title} onChange={(e) => setNewTask({...newTask, title: e.target.value})} placeholder="ex: Bug fix CSS Kanban" className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900" />
+                  <h3 className="text-3xl font-black tracking-tight">{editingTask ? 'Détails de la tâche' : 'Nouvelle Tâche'}</h3>
+                  <p className="text-slate-400 text-sm font-medium">Définissez une micro-tâche pour le workspace.</p>
+                </div>
+                <button onClick={() => setShowTaskModal(false)} className="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full text-slate-400 transition-colors">
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 ml-1">Intitulé de la tâche</label>
+                  <input type="text" value={newTask.title} onChange={(e) => setNewTask({...newTask, title: e.target.value})} placeholder="ex: Bug fix CSS Kanban" className="w-full bg-slate-50 border-2 border-transparent focus:border-slate-900/10 focus:bg-white rounded-2xl px-6 py-4 text-sm font-bold placeholder:text-slate-300 outline-none transition-all duration-300" />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Description</label>
-                  <textarea value={newTask.description} onChange={(e) => setNewTask({...newTask, description: e.target.value})} placeholder="Optionnel..." rows={3} className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 resize-none" />
+                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 ml-1">Notes ou contexte</label>
+                  <textarea value={newTask.description} onChange={(e) => setNewTask({...newTask, description: e.target.value})} placeholder="Détails optionnels..." rows={3} className="w-full bg-slate-50 border-2 border-transparent focus:border-slate-900/10 focus:bg-white rounded-2xl px-6 py-4 text-sm font-bold placeholder:text-slate-300 outline-none resize-none transition-all duration-300" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-[11px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Échéance</label>
-                    <input type="date" value={newTask.date || ''} onChange={(e) => setNewTask({...newTask, date: e.target.value})} className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900" />
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 ml-1">Échéance</label>
+                    <input type="date" value={newTask.date || ''} onChange={(e) => setNewTask({...newTask, date: e.target.value})} className="w-full bg-slate-50 border-2 border-transparent focus:border-slate-900/10 focus:bg-white rounded-2xl px-6 py-4 text-sm font-black outline-none transition-all duration-300" />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Statut</label>
-                    <select value={newTask.status} onChange={(e) => setNewTask({...newTask, status: e.target.value})} className="w-full bg-slate-50 border-0 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer">
+                    <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 ml-1">Colonne</label>
+                    <select value={newTask.status} onChange={(e) => setNewTask({...newTask, status: e.target.value})} className="w-full bg-slate-50 border-2 border-transparent focus:border-slate-900/10 focus:bg-white rounded-2xl px-6 py-4 text-sm font-black outline-none appearance-none cursor-pointer transition-all duration-300">
                       {COLUMNS.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                     </select>
                   </div>
                 </div>
-                <div className="flex gap-3 pt-6">
-                  <button onClick={() => setShowTaskModal(false)} className="flex-1 py-3.5 rounded-2xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">Annuler</button>
-                  <button onClick={handleSaveTask} disabled={!newTask.title.trim()} className="flex-[2] py-3.5 rounded-2xl font-bold bg-slate-900 text-white hover:bg-slate-800 transition-all active:scale-95 disabled:opacity-50">{editingTask ? 'Enregistrer' : 'Ajouter'}</button>
+                <div className="flex gap-4 pt-8">
+                  <button onClick={() => setShowTaskModal(false)} className="flex-1 py-4 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-50 transition-colors">Annuler</button>
+                  <button onClick={handleSaveTask} disabled={!newTask.title.trim()} className="flex-[2] py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-slate-900 text-white hover:bg-slate-800 shadow-[0_12px_24px_rgba(0,0,0,0.15)] transition-all duration-300 active:scale-95 disabled:opacity-40">{editingTask ? 'Mettre à jour' : 'Ajouter au board'}</button>
                 </div>
               </div>
             </motion.div>

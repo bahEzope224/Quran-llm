@@ -10,6 +10,7 @@ from app.services.llm import (
 )
 from app.services.retriever import retrieve_relevant_chunks
 from app.services.conversation_logger import record_conversation
+from app.services.french_quran import enrich_quran_chunk_with_french
 
 SOURCE_PRIORITY = ["quran", "seerah", "hadith", "tafsir", "fatwa"]
 # Map pour la classification des questions
@@ -210,16 +211,19 @@ PROPHET_MENTION_COUNTS = [
 
 
 def _localize_chunks(chunks: list[dict[str, str]], translate_content: bool = True) -> list[dict[str, str]]:
-    """Prepare les chunks pour l'affichage (avec traduction proactive pour Tafsir/Hadith)."""
+    """Prepare les chunks pour l'affichage: injette la traduction FR officielle pour le Coran,
+    traduit les autres sources (Tafsir/Hadith) depuis l'anglais."""
     localized_chunks: list[dict[str, str]] = []
     for chunk in chunks:
         localized_chunk = dict(chunk)
         localized_chunk["original_content"] = chunk["content"]
         
-        # Le Coran reste tel quel (versets sources), le reste est traduit par defaut
         is_quran = chunk["type"] == "quran"
-        if translate_content and not is_quran:
-            # On force la traduction car on sait que Tafsir/Hadith sont en Anglais dans notre DB
+        if is_quran:
+            # Enrichissement prioritaire : traduction française officielle depuis le CSV
+            localized_chunk = enrich_quran_chunk_with_french(localized_chunk)
+        elif translate_content:
+            # Pour Tafsir/Hadith (en anglais dans la DB) : traduction LLM vers le français
             localized_chunk["content"] = translate_text_to_french(chunk["content"], force=True)
             
         localized_chunks.append(localized_chunk)
@@ -310,12 +314,32 @@ def _answer_structure_question(question: str) -> str | None:
 
 
 def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english_query: str = "", intent: str | None = None) -> str:
-    """Construit le prompt pour l'LLM en incluant les sources pertinentes."""
-    # On ne garde que les sources qui mentionnent vraiment le sujet
-    context_block = "\n".join(
-        f"- [{chunk['type']}] {chunk['source']} ({chunk['ref']}): {chunk['content']}"
-        for chunk in chunks
-    )
+    """Construit le prompt pour l'LLM en incluant les sources pertinentes.
+
+    Les versets coraniques sont enrichis avec la traduction française officielle (CSV).
+    Le LLM peut donc les citer directement sans re-traduire.
+    """
+    # Construction du bloc de contexte avec distinction Coran (FR officiel) / autres sources
+    context_lines = []
+    has_official_quran_translation = False
+    for chunk in chunks:
+        chunk_type = chunk["type"]
+        ref = chunk["ref"]
+        source = chunk["source"]
+        content = chunk["content"]
+
+        if chunk_type == "quran" and chunk.get("french_translation"):
+            # Traduction française officielle disponible — on le signale clairement au LLM
+            context_lines.append(
+                f"- [CORAN - traduction française officielle] {ref}: {content}"
+            )
+            has_official_quran_translation = True
+        else:
+            context_lines.append(
+                f"- [{chunk_type}] {source} ({ref}): {content}"
+            )
+
+    context_block = "\n".join(context_lines)
 
     if intent == "identification":
         return (
@@ -332,8 +356,14 @@ def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english
             "Tu es un assistant musulman expert, factuel et TRES CONCIS (1 a 2 phrases). "
             "Formule la reponse en francais naturel, fluide et chaleureux, comme un conseiller bienveillant."
         )
+        # Note explicite au LLM si des versets Coran en français officiel sont présents
+        quran_note = (
+            "NOTE: Les versets du Coran fournis sont issus d'une traduction française officielle. "
+            "Cite-les directement sans les reformuler ni les retraduire.\n"
+        ) if has_official_quran_translation else ""
         return (
             f"{persona}\n\n"
+            f"{quran_note}"
             "INSTRUCTION CRITIQUE: Ne reponds qu'avec les informations PRESENTES dans les sources.\n"
             "Si la question porte sur un chiffre (age, nombre) absent des sources, declare que l'information n'est pas disponible dans les textes fournis.\n\n"
             f"SOURCES:\n{context_block}\n\n"
@@ -744,6 +774,14 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
 
     # localized_chunks pour l'affichage final
     display_chunks = _localize_chunks(final_display_chunks, translate_content=True)
+
+    # Enrichissement des chunks Quran avec la traduction française AVANT le prompt LLM
+    # On applique sur final_display_chunks (utilisés pour le prompt) pour que le LLM
+    # voie directement la traduction française officielle plutôt qu'un texte anglais.
+    llm_chunks = [
+        enrich_quran_chunk_with_french(chunk) if chunk.get("type") == "quran" else chunk
+        for chunk in final_display_chunks
+    ]
     
     # 6. Verification de reponse rapide via regles (sur TOUTE la selection pour ne rien rater du Coran)
     direct_answer = _build_rule_based_answer(payload=payload, chunks=pruned_chunks)
@@ -755,18 +793,18 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
         intent = _detect_intent(_normalize_question(payload.question))
         prompt = build_rag_prompt(
             payload=payload, 
-            chunks=final_display_chunks, 
+            chunks=llm_chunks,  # ← chunks enrichis avec traduction FR
             english_query=english_query, 
             intent=intent
         )
         if intent == "identification" and not direct_answer:
             # Mode Chat (generate_answer) pour le heros, car _generate est trop sec
             # Le persona "biographe fidele" est injecte par build_rag_prompt
-            generated = generate_answer(prompt=prompt, context_chunks=final_display_chunks)
+            generated = generate_answer(prompt=prompt, context_chunks=llm_chunks)
             answer = generated["answer"]
         else:
             # Mode normal pour les avis juridiques (obligation/prohibition)
-            generated = generate_answer(prompt=prompt, context_chunks=final_display_chunks)
+            generated = generate_answer(prompt=prompt, context_chunks=llm_chunks)
             answer = generated["answer"]
 
     try:

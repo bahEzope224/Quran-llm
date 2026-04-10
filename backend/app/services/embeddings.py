@@ -109,7 +109,7 @@ def _call_embedding_provider(
                 used_spare=True,
             )
         print(
-            f"DEBUG: Provider HTTP error batch {batch_idx} ({http_err}). Switching to FastEmbed fallback."
+            f"DEBUG: Provider HTTP error batch {batch_idx} ({http_err}) on URL: {base_url}. Switching to FastEmbed fallback."
         )
         return _run_fastembed(batch, batch_idx)
     except (error.URLError, TimeoutError, ConnectionRefusedError) as exc:

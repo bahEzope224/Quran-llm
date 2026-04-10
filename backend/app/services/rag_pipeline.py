@@ -632,49 +632,60 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     if structure_answer:
         return ChatResponse(answer=structure_answer, sources=[])
 
-    # 2. Traduction de la question (avec Hybridation par mots-cles)
-    english_query = translate_french_to_english(payload.question)
+    # 2. Traduction de la question (EN pur pour la recherche sémantique)
+    semantic_query = translate_french_to_english(payload.question)
     
-    # Enrichissement manuel pour pallier les defaillances de traduction
-    lower_question = payload.question.lower()
-    extra_keywords = []
-    for fr_kw, en_kw in KEYWORD_TRANSLATION_MAP.items():
-        if fr_kw in lower_question:
-            extra_keywords.append(en_kw)
+    # Lexical query (Hybride EN + FR original pour le BM25/Filtres)
+    lexical_query = f"{payload.question} {semantic_query}".lower()
     
-    if extra_keywords:
-        english_query = f"{english_query} {' '.join(extra_keywords)}"
+    print(f"DEBUG: Search [Semantic]: {semantic_query} | [Lexical]: {payload.question}")
     
     # --- DEBUT CHIRURGIE LEXICALE (Anti-Confusion Assia/Aicha) ---
     if "assia" in lower_question or "asiya" in lower_question:
         # Si on cherche Assia, on INTERDIT Aisha (pollution lexicale detectee)
-        english_query = re.sub(r"\baisha\b", "", english_query, flags=re.IGNORECASE)
-        english_query = f"{english_query} pharaoh asiya quran"
+        semantic_query = re.sub(r"\baisha\b", "", semantic_query, flags=re.IGNORECASE)
+        semantic_query = f"{semantic_query} pharaoh asiya quran"
     # --- FIN CHIRURGIE LEXICALE ---
 
-    print(f"DEBUG: Original (FR): {payload.question} -> Enhanced (EN): {english_query}")
+    print(f"DEBUG: Original (FR): {payload.question} -> Enhanced (EN): {semantic_query}")
 
     # 2. Retrieval avec Deep Search (top_k=15)
-    # On analyse le sujet sur la question originale + sa version enrichie (Double Check)
-    topic = _detect_topic(normalized_q + " " + english_query.lower())
-    raw_chunks = retrieve_relevant_chunks(query=english_query, top_k=15, topic=topic)
+    # L'embedding est fait sur semantic_query (EN), mais le lexical score interne 
+    # profitera de semantic_query + les mots-clés déjà présents.
+    topic = _detect_topic(normalized_q + " " + semantic_query.lower())
+    raw_chunks = retrieve_relevant_chunks(query=semantic_query, top_k=15, topic=topic)
     
     # 3. Filtrage de pertinence hybride
     valid_chunks = []
-    keywords = set(re.findall(r"\w{4,}", english_query.lower()))
+    # On combine les tokens EN et FR pour le filtrage lexical final
+    keywords = set(re.findall(r"\w{4,}", lexical_query))
+    
+    # Booster de sécurité (HALAL / HARAM / PORC)
+    safety_keywords = {"porc", "pork", "cochon", "halal", "haram", "interdit", "permi", "forbidden"}
+    active_safety_kws = keywords.intersection(safety_keywords)
+
     for c in raw_chunks:
         score = c.get("semantic_score", 0)
-        content = (c.get("content", "") + " " + c.get("ref", "")).lower()
+        content = (c.get("content", "") + " " + c.get("ref", "") + " " + c.get("arabic", "")).lower()
         
         # Le SEUIL DU CORAN est desactive car ces sources sont prioritaires
         chunk_type = c.get("type", "tafsir")
         threshold = -1.0 if chunk_type == "quran" else RELEVANCE_THRESHOLD
         
-        if score > threshold or (keywords and any(kw in content for kw in keywords)):
+        # Match sémantique OU Match lexical (FR/EN)
+        lexical_match = any(kw in content for kw in keywords)
+        
+        # Boost de sécurité : si un mot clé de sécurité match, on garde le chunk peu importe son score sémantique
+        safety_match = any(kw in content for kw in active_safety_kws)
+
+        if score > threshold or lexical_match or safety_match:
+            # On ajoute un bonus au score pour les safety matches
+            if safety_match:
+                c["semantic_score"] = score + 0.5
             valid_chunks.append(c)
     
     # 4. Elagage par mots-cles additionnel (Nettoyage final)
-    pruned_chunks = _prune_irrelevant_chunks(valid_chunks, english_query)
+    pruned_chunks = _prune_irrelevant_chunks(valid_chunks, semantic_query)
     
     # 5. Filtrage thématique (TOP 3 initial)
     initial_top_chunks = _filter_chunks_for_topic(payload=payload, chunks=pruned_chunks)

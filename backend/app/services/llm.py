@@ -272,15 +272,39 @@ def translate_text_to_french(text: str, force: bool = False) -> str:
 
 
 def translate_french_to_english(text: str) -> str:
-    """Traduit une question FR en EN de maniere tres robuste par completion brute."""
+    """Traduit une question FR en EN de manière robuste pour les embeddings."""
     if not text:
         return text
 
+    # Nettoyage préalable
+    clean_text = text.strip().lower()
+    
+    # Dictionnaire de secours pour les termes islamiques critiques
+    keyword_map = {
+        "porc": "pork",
+        "cochon": "pork pig",
+        "prière": "prayer salat",
+        "jeuner": "fasting",
+        "jeûne": "fasting",
+        "halal": "halal permissible",
+        "haram": "haram forbidden",
+        "enfer": "hell jahannam",
+        "paradis": "paradise jannah",
+        "héritage": "inheritance",
+        "femme": "woman",
+        "mariage": "marriage nikah",
+        "divorce": "divorce talaq",
+    }
+    
+    extra_keywords = " ".join([v for k, v in keyword_map.items() if k in clean_text])
+
     # Prompt mono-shot de completion pure (format raw d'Ollama)
     prompt = (
-        "Translate French to English.\n"
+        "Translate French to English accurately.\n"
         "FR: 'Quels sont les piliers ?'\n"
-        "EN: 'what are the pillars of islam?'\n"
+        "EN: 'pillars of islam'\n"
+        "FR: 'est ce que le porc est halal ?'\n"
+        "EN: 'pork halal permissible'\n"
         f"FR: '{text}'\n"
         "EN: '"
     )
@@ -288,7 +312,11 @@ def translate_french_to_english(text: str) -> str:
     translated = _generate(prompt)
     
     if not translated:
-        # Fallback sur la Keyword Map déjà implémentée dans rag_pipeline.py
-        return text
+        # Fallback sur les mots-clés si l'IA échoue
+        return f"{text} {extra_keywords}".strip()
         
-    return translated.strip().strip("'").strip('"').lower()
+    result = translated.strip().strip("'").strip('"').lower()
+    # On ajoute les mots-clés critiques même à la traduction pour maximiser le recall sémantique
+    if extra_keywords:
+        return f"{result} {extra_keywords}"
+    return result

@@ -86,20 +86,23 @@ def _post_chat(messages: list[dict[str, str]], temperature: float | None = None,
         if settings.llm_api_key:
             headers["Authorization"] = f"Bearer {settings.llm_api_key}"
 
+    # Construction intelligente de l'URL
+    base_url = settings.llm_base_url.rstrip("/")
+    if settings.llm_provider == "ollama":
+        url = f"{base_url}/api/chat" if "/api/chat" not in base_url else base_url
+    else:
+        url = f"{base_url}/chat/completions" if "/chat/completions" not in base_url else base_url
+
     http_request = request.Request(
-        settings.llm_base_url,
+        url,
         data=json.dumps(payload).encode("utf-8"),
         headers=headers,
         method="POST",
     )
 
     try:
-        # On utilise le timeout specifique si fourni, sinon le global
         timeout = settings.llm_timeout_seconds
-        with request.urlopen(
-            http_request,
-            timeout=timeout,
-        ) as response:
+        with request.urlopen(http_request, timeout=timeout) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
     except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError) as e:
         print(f"DEBUG: LLM API Error: {e}")
@@ -110,22 +113,13 @@ def _post_chat(messages: list[dict[str, str]], temperature: float | None = None,
 
 def _generate(prompt: str, model: str = settings.llm_translation_model, options: dict | None = None) -> str | None:
     """Appel bas niveau a /api/generate (format completion brut)."""
-    url = settings.llm_base_url.replace("/chat", "/generate")
-    # Options par defaut pour la traduction (tres strict)
-    default_options = {"temperature": 0.0, "stop": ["\n", "."]}
-    if options:
-        default_options.update(options)
-    elif "biographe" in prompt.lower() or "identification" in prompt.lower():
-        # Moins restrictif pour les biographies
-        default_options = {"temperature": 0.3}
+    base_url = settings.llm_base_url.rstrip("/")
+    if settings.llm_provider == "ollama":
+        url = f"{base_url}/api/generate" if "/api/generate" not in base_url else base_url
+    else:
+        # Pour OpenAI, on simule generate via chat completions (format standard)
+        return _post_chat([{"role": "user", "content": prompt}], temperature=0.0, model=model)
 
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "stream": False,
-        "raw": True,
-        "options": default_options
-    }
     http_request = request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),

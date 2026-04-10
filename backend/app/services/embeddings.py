@@ -73,10 +73,15 @@ def _call_embedding_provider(
     base_url: str | None = None,
     used_spare: bool = False,
 ) -> tuple[list[list[float]], float]:
-    base_url = base_url or settings.embeddings_base_url
+    url = base_url or settings.embeddings_base_url
+    # Normalisation de l'URL pour OpenAI/Groq (auto-append /embeddings si besoin)
+    url = url.rstrip("/")
+    if settings.embeddings_provider != "ollama" and "/embeddings" not in url:
+        url = f"{url}/embeddings"
+
     start = time.perf_counter()
     try:
-        http_request = _build_request(base_url, batch)
+        http_request = _build_request(url, batch)
         with request.urlopen(http_request, timeout=settings.llm_timeout_seconds) as response:
             response_payload = json.loads(response.read().decode("utf-8"))
             

@@ -8,6 +8,7 @@ import ChatPage from './pages/ChatPage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
+import ManagementPage from './pages/ManagementPage.jsx';
 
 function AuthPage({ mode }) {
   const isSignIn = mode === 'sign-in';
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/landing" element={<LandingPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/management" element={<ManagementPage />} />
         <Route
           path="/sign-in"
           element={

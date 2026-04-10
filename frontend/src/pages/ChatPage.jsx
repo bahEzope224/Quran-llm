@@ -1109,6 +1109,18 @@ export default function ChatPage() {
                   </div>
                   <span className="material-symbols-outlined">add_circle</span>
                 </button>
+
+                <Link
+                  className="activity-item"
+                  to="/management"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <div>
+                    <strong>Gestion de projet</strong>
+                    <p>Accéder au Kanban et à la roadmap des fonctionnalités.</p>
+                  </div>
+                  <span className="material-symbols-outlined text-emerald-600">trello</span>
+                </Link>
               </div>
             </article>
 

@@ -20,7 +20,7 @@ QUESTION_TOPIC_MAP = {
     "interest": ["interet", "interets", "interest", "usury", "riba"],
     "pillars": ["pilier", "piliers", "pillar", "pillars", "cinq piliers", "five pillars"],
     "music": ["musique", "music", "musical", "instrument", "instruments", "song", "singing"],
-    "general": ["islam", "musulman", "muslim", "religion", "dieu", "allah", "prophete", "prophet", "coran", "quran", "hadith", "sunnah", "foi", "faith", "iman", "ihsan", "priere", "hajj", "zakat", "jeune", "fasting", "halal", "haram"],
+    "general": ["islam", "musulman", "muslim", "religion", "dieu", "allah", "prophete", "prophet", "coran", "quran", "hadith", "sunnah", "foi", "faith", "iman", "ihsan", "priere", "hajj", "zakat", "jeune", "fasting", "halal", "haram", "porc", "cochon", "pork", "swine"],
     "biography": ["vie", "life", "naissance", "birth", "mort", "death", "mariage", "marriage", "epouse", "wife", "age", "biographie", "biography", "khadija", "aisha", "fatima", "décédé", "décès", "décédée", "mourir", "mort", "né", "né à", "born", "died", "passed away", "prophete", "prohete", "muhammad", "quand", "when", "date", "year", "année"],
 }
 
@@ -259,6 +259,13 @@ def _restrict_redundant_sources(
         relevant_keywords = chunk_keywords & keywords
 
         if chunk_type in {"quran", "hadith", "seerah"}:
+            # On ne limite PAS le Coran si c'est un sujet de sécurité (on veut toutes les preuves)
+            is_safety = any(kw in keywords for kw in {"pork", "swine", "halal", "haram", "porc"})
+            if chunk_type == "quran" and is_safety:
+                trimmed.append(chunk)
+                covered_keywords.update(relevant_keywords)
+                continue
+
             if chunk_type in seen_scriptures:
                 continue
             seen_scriptures.add(chunk_type)
@@ -452,7 +459,7 @@ def _filter_chunks_for_topic(payload: ChatRequest, chunks: list[dict[str, str]])
     if not topic:
         return chunks
 
-    tagged_chunks = [chunk for chunk in chunks if topic in chunk.get("tags", [])]
+    tagged_chunks = [chunk for chunk in chunks if topic in chunk.get("tags", []) or "priority" in chunk.get("tags", [])]
     if tagged_chunks:
         return _sort_chunks_by_priority(tagged_chunks)
 
@@ -620,6 +627,9 @@ def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]
 
 def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     """Pipeline RAG Ameliore: Traduction EN, Retrieval Hybride, Generation FR."""
+    # 0. Debug Config
+    print(f"DEBUG: Config Embeddings URL: '{settings.embeddings_base_url}' | Provider: {settings.embeddings_provider}")
+    
     # 1. Verification Hors-Sujet
     normalized_q = _normalize_question(payload.question)
     if _is_off_topic(normalized_q):
@@ -674,7 +684,8 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
                 from app.services.retriever import retrieve_specific_quran_verse
                 v = retrieve_specific_quran_verse(ref)
                 if v:
-                    v["semantic_score"] = 1.0 # Score maximum pour forcer le passage
+                    v["semantic_score"] = 1.2 # Boost encore plus fort
+                    v["tags"] = v.get("tags", []) + ["priority", "general"] # On force les tags pour éviter le filtrage
                     raw_chunks.append(v)
                     print(f"DEBUG: Force Injected Critical Verse: {ref}")
     # --- FIN INJECTION ---

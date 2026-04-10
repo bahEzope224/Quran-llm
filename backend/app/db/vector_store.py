@@ -439,6 +439,28 @@ def _search_quran_verses(query: str, top_k: int) -> list[dict[str, str]]:
         }
         for item in matches[:top_k]
     ]
+def get_verse_by_ref(ref_str: str) -> dict[str, str] | None:
+    """Récupère un verset spécifique par sa référence exacte (ex: '2:173' ou 'Quran 2:173')."""
+    verses = get_quran_verses()
+    clean_ref = ref_str.replace("Quran ", "").strip()
+    for v in verses:
+        if v["ref"] == clean_ref:
+            return {
+                "type": "quran",
+                "source": v["source"],
+                "ref": v["ref"],
+                "content": v["text"],
+                "arabic": v["text"],
+                "tags": _infer_tags(
+                    ref=v["ref"],
+                    source=v["source"],
+                    content=v["text"],
+                    arabic=v["text"],
+                    source_type="quran",
+                ),
+                "lexical_score": 1.0,
+            }
+    return None
 
 
 def _search_tafsir_entries(query: str, top_k: int) -> list[dict[str, str]]:

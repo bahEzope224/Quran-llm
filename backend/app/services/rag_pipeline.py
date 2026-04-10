@@ -637,9 +637,16 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     semantic_query = translate_french_to_english(payload.question)
     
     # Lexical query (Hybride EN + FR original pour le BM25/Filtres)
-    lexical_query = f"{payload.question} {semantic_query}".lower()
+    # On force la traduction des mots-clés critiques pour le moteur de recherche
+    search_keywords_fr = {"porc", "cochon", "halal", "haram", "prière", "jeûne", "intérêt", "riba", "usure"}
+    translation_boost = ""
+    for kw in search_keywords_fr:
+        if kw in lower_question:
+            translation_boost += f" {KEYWORD_TRANSLATION_MAP.get(kw, '')}"
     
-    print(f"DEBUG: Search [Semantic]: {semantic_query} | [Lexical]: {payload.question}")
+    lexical_query = f"{payload.question} {semantic_query} {translation_boost}".lower()
+    
+    print(f"DEBUG: Search [Semantic]: {semantic_query} | [Lexical]: {lexical_query}")
     
     # --- DEBUT CHIRURGIE LEXICALE (Anti-Confusion Assia/Aicha) ---
     if "assia" in lower_question or "asiya" in lower_question:
@@ -655,6 +662,22 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
     # profitera de semantic_query + les mots-clés déjà présents.
     topic = _detect_topic(normalized_q + " " + semantic_query.lower())
     raw_chunks = retrieve_relevant_chunks(query=semantic_query, top_k=15, topic=topic)
+    
+    # --- INJECTION DE SECURITE (FORCE RECALL) ---
+    # Si on parle de porc, on injecte de force les versets clés s'ils manquent
+    if "porc" in lower_question or "pork" in semantic_query.lower():
+        critical_refs = ["Quran 2:173", "Quran 5:3", "Quran 6:145", "Quran 16:115"]
+        existing_refs = {c.get("ref") for c in raw_chunks}
+        for ref in critical_refs:
+            if ref not in existing_refs:
+                # On essaie de récupérer le verset via le retriever
+                from app.services.retriever import retrieve_specific_quran_verse
+                v = retrieve_specific_quran_verse(ref)
+                if v:
+                    v["semantic_score"] = 1.0 # Score maximum pour forcer le passage
+                    raw_chunks.append(v)
+                    print(f"DEBUG: Force Injected Critical Verse: {ref}")
+    # --- FIN INJECTION ---
     
     # 3. Filtrage de pertinence hybride
     valid_chunks = []
@@ -680,9 +703,11 @@ def run_rag_pipeline(payload: ChatRequest) -> ChatResponse:
         safety_match = any(kw in content for kw in active_safety_kws)
 
         if score > threshold or lexical_match or safety_match:
-            # On ajoute un bonus au score pour les safety matches
+            # On ajoute un bonus au score pour les safety matches ET un bonus Coran
             if safety_match:
-                c["semantic_score"] = score + 0.5
+                c["semantic_score"] = score + 0.6
+                if chunk_type == "quran":
+                    c["semantic_score"] += 0.4 # Priorité absolue au Coran sur le Halal/Haram
             valid_chunks.append(c)
     
     # 4. Elagage par mots-cles additionnel (Nettoyage final)

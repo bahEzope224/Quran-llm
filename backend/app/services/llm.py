@@ -292,15 +292,13 @@ def translate_french_to_english(text: str) -> str:
     
     extra_keywords = " ".join([v for k, v in keyword_map.items() if k in clean_text])
 
-    # Prompt mono-shot de completion pure (format raw d'Ollama)
+    # Prompt mono-shot plus naturel pour OpenAI/Groq
     prompt = (
-        "Translate French to English accurately.\n"
-        "FR: 'Quels sont les piliers ?'\n"
-        "EN: 'pillars of islam'\n"
-        "FR: 'est ce que le porc est halal ?'\n"
-        "EN: 'pork halal permissible'\n"
-        f"FR: '{text}'\n"
-        "EN: '"
+        "Translate the following French Islamic question into clear, natural English.\n"
+        "Maintain religious technical terms (like Halal, Haram, Salat, etc.).\n"
+        "Output ONLY the translated English sentence.\n\n"
+        f"French: '{text}'\n"
+        "English: "
     )
 
     translated = _generate(prompt)

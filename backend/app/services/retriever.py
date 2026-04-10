@@ -90,3 +90,7 @@ def retrieve_tafsir_by_ref(ref: str) -> dict[str, str] | None:
         break
         
     return None
+def retrieve_specific_quran_verse(ref: str) -> dict[str, str] | None:
+    """Récupère un verset spécifique par sa référence pour injection de sécurité."""
+    from app.db.vector_store import get_verse_by_ref
+    return get_verse_by_ref(ref)

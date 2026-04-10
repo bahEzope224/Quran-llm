@@ -1,7 +1,3 @@
-
-
-
-
 <div align="center">
 
 # 📖 Quran-LLM
@@ -11,7 +7,8 @@
 **Quran-LLM** est un outil de recherche assistée. Il ne remplace jamais l'avis d'une autorité religieuse (Savant, Moufti).
 
 ### 📖 Sources de données
-- **Coran** : Texte sacré via Tanzil.net (domaine public).
+- **Coran** : Texte sacré via Tanzil.net.
+- **Traduction Française** : Traduction officielle de Muhammad Hamidullah / Complexe du Roi Fahd (via CSV local).
 - **Hadiths** : Sahih al-Bukhari & Muslim via Sunnah.com (usage non-commercial).
 - **Tafsir** : Ibn Kathir (Arabe/Anglais) via Qul/Tarteel (domaine public).
 - **Fatwas** : IslamQA via indexation (citation explicite maintenue).
@@ -47,11 +44,12 @@ Le système combine :
 ## 🚀 Fonctionnalités
 
 - **Chat intelligent** sur le Coran et les Hadiths
-- **Mode de réponse configurable** (ex. : focus Coran uniquement, Coran + Hadiths, etc.)
-- **Réponses structurées** avec sources vérifiables
-- **Profil utilisateur** (mock pour le moment)
-- **Architecture RAG** pour une grande précision et réduction des hallucinations
-- Interface frontend moderne et responsive
+- **Mode de réponse configurable** (Réponse, Preuves)
+- **Traduction française officielle** intégrée directement (Hamidullah)
+- **Réponses structurées** avec sources vérifiables et attribution précise
+- **Profil utilisateur** (École juridique, langue, mode de réponse)
+- **Architecture RAG avancée** pour une grande précision et réduction des hallucinations
+- Interface frontend moderne et responsive avec affichage bilingue (Arabe/Français)
 
 ---
 

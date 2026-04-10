@@ -113,6 +113,7 @@ function toSourceCard(source, index) {
     title: source.arabic ?? '',
     translation: source.text,
     content: source.text,
+    translationSource: source.translation_source,
   };
 }
 
@@ -145,6 +146,12 @@ function SourceCard({ card }) {
           {card.title}
         </p>
         <p className="source-card-text source-card-translation">"{card.translation}"</p>
+        {card.translationSource && (
+          <div className="source-card-translation-source">
+            <span className="material-symbols-outlined">g_translate</span>
+            <span>{card.translationSource}</span>
+          </div>
+        )}
       </article>
     );
   }

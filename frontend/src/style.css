@@ -1335,6 +1335,25 @@ a {
   color: var(--text-muted);
 }
 
+.source-card-translation-source {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--primary);
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 10px;
+  border-top: 1px solid rgba(42, 103, 70, 0.08);
+}
+
+.source-card-translation-source span.material-symbols-outlined {
+  font-size: 0.85rem;
+}
+
 .italic {
   font-style: italic;
 }

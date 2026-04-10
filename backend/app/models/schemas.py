@@ -10,6 +10,7 @@ class SourceItem(BaseModel):
     role: str | None = None
     arabic: str | None = None
     original_text: str | None = None
+    translation_source: str | None = None
     tags: list[str] = Field(default_factory=list)
 
 

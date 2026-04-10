@@ -15,7 +15,7 @@ HADITH_COLLECTION_FILES = [
     "Sunan an-Nasa'i.json",
 ]
 ISLAMQA_FATWAS_JSON = DATA_DIR / "islamqa_fatwas.json"
-SEERAH_JSON = DATA_DIR / "seerah.json"
+SEERAH_JSON = DATA_DIR / "seerah_muhammad.json"
 
 
 def list_available_datasets() -> list[str]:
@@ -94,8 +94,34 @@ def load_islamqa_dataset() -> list[dict]:
 
 
 def load_seerah_dataset() -> list[dict]:
-    """Charge le dataset de la Sira (biographie du Prophète)."""
+    """Charge le dataset de la Sira (biographie du Prophète) et l'aplatit en chunks exploitables."""
     if not SEERAH_JSON.exists():
         return []
 
-    return json.loads(SEERAH_JSON.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(SEERAH_JSON.read_text(encoding="utf-8"))
+        chapters = data.get("chapters", [])
+        flat_items = []
+        
+        for chap in chapters:
+            chap_title = chap.get("title", "Sans titre")
+            era = chap.get("era", "Général")
+            chap_num = chap.get("number", 0)
+            
+            for i, event in enumerate(chap.get("events", [])):
+                event_title = event.get("title", "")
+                content = event.get("content", "")
+                
+                if content:
+                    flat_items.append({
+                        "id": f"Seerah-Ch{chap_num}-Ev{i}",
+                        "title": f"{chap_title} - {event_title}".strip(" -"),
+                        "content": content,
+                        "category": era,
+                        "chapter": chap_num
+                    })
+                    
+        return flat_items
+    except Exception as e:
+        print(f"DEBUG: Failed to load Seerah dataset: {e}")
+        return []

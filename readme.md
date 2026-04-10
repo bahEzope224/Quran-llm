@@ -44,12 +44,11 @@ Le système combine :
 ## 🚀 Fonctionnalités
 
 - **Chat intelligent** sur le Coran et les Hadiths
-- **Mode de réponse configurable** (Réponse, Preuves)
-- **Traduction française officielle** intégrée directement (Hamidullah)
-- **Réponses structurées** avec sources vérifiables et attribution précise
-- **Profil utilisateur** (École juridique, langue, mode de réponse)
-- **Architecture RAG avancée** pour une grande précision et réduction des hallucinations
-- Interface frontend moderne et responsive avec affichage bilingue (Arabe/Français)
+- **Mode de réponse configurable** (ex. : focus Coran uniquement, Coran + Hadiths, etc.)
+- **Réponses structurées** avec sources vérifiables
+- **Profil utilisateur** (mock pour le moment)
+- **Architecture RAG** pour une grande précision et réduction des hallucinations
+- Interface frontend moderne et responsive
 
 ---
 

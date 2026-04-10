@@ -351,7 +351,8 @@ def build_rag_prompt(payload: ChatRequest, chunks: list[dict[str, str]], english
     if intent == "identification":
         return (
             "Tu es un biographe islamique expert (3 a 5 PHRASES).\n"
-            "RESUME le personnage de maniere fluide en te basant sur les SOURCES fournies.\n"
+            "RESUME le personnage ou l'événement de manière fluide en te basant sur les SOURCES fournies.\n"
+            "CITATION OBLIGATOIRE: Cite TOUJOURS la référence de la source utilisée entre crochets (ex: [Prophetic Biography (Seerah) - Titre]) pour chaque fait mentionné.\n"
             "RIGUEUR ABSOLUE: N'invente AUCUN chiffre, age, date historique ou duree de regne absent des sources.\n"
             "CONSIGNE DE SILENCE: Si une source parle d'un evenement (ex: mariage) mais ne donne pas l'age, dis explicitement que les sources ne precisent pas l'age.\n\n"
             f"SOURCES:\n{context_block}\n\n"
@@ -622,7 +623,7 @@ def _build_sources_from_chunks(chunks: list[dict[str, str]]) -> list[SourceItem]
             arabic=chunk.get("arabic"),
             original_text=chunk.get("original_content"),
             tags=chunk.get("tags", []),
-            url=chunk.get("url"), # Ajout de l'URL pour les Fatwas
+            url=chunk.get("url"), # URL transmise pour Seerah et Fatwa
             role=role_by_type.get(chunk["type"], "Source retournee par le retriever."),
         )
         for chunk in ordered_chunks

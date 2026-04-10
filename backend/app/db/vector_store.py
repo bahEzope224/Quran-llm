@@ -655,6 +655,7 @@ def _search_seerah_entries(query: str, top_k: int) -> list[dict[str, str]]:
                     "source": "Prophetic Biography (Seerah)",
                     "ref": item["id"],
                     "content": item["content"],
+                    "url": item.get("url"),
                     "tags": _infer_tags(
                         ref=item["id"],
                         source="Seerah",
@@ -672,6 +673,7 @@ def _search_seerah_entries(query: str, top_k: int) -> list[dict[str, str]]:
             "source": item["source"],
             "ref": item["ref"],
             "content": item["content"],
+            "url": item.get("url"),
             "tags": item["tags"],
             "lexical_score": item["score"],
         }

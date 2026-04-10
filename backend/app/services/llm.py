@@ -223,8 +223,13 @@ def _filter_used_sources(answer: str, sources: list[dict]) -> list[dict]:
         ref = s.get("ref", "")
         # On verifie si la reference est presente (ex: "2:282")
         # On nettoie la ref pour la recherche (ex: "Quran 2:173" -> "2:173")
-        clean_ref = ref.replace("Quran ", "").replace("Sahih Muslim ", "").lower()
-        if clean_ref in lower_answer or ref.lower() in lower_answer:
+        clean_ref = (
+            ref.replace("Quran ", "")
+            .replace("Sahih Muslim ", "")
+            .replace("Prophetic Biography (Seerah) - ", "")
+            .lower()
+        )
+        if clean_ref in lower_answer or ref.lower() in lower_answer or "seerah" in lower_answer:
             used.append(s)
 
     # STRICT: Si aucune source n'est citee par son nom, on considere qu'aucune n'est utilisee.

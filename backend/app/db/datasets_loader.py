@@ -107,6 +107,7 @@ def load_seerah_dataset() -> list[dict]:
             chap_title = chap.get("title", "Sans titre")
             era = chap.get("era", "Général")
             chap_num = chap.get("number", 0)
+            chap_url = chap.get("url", "")
             
             for i, event in enumerate(chap.get("events", [])):
                 event_title = event.get("title", "")
@@ -114,11 +115,12 @@ def load_seerah_dataset() -> list[dict]:
                 
                 if content:
                     flat_items.append({
-                        "id": f"Seerah-Ch{chap_num}-Ev{i}",
+                        "id": f"Prophetic Biography (Seerah) - {chap_title}", # Référence plus lisible pour l'IA
                         "title": f"{chap_title} - {event_title}".strip(" -"),
                         "content": content,
                         "category": era,
-                        "chapter": chap_num
+                        "chapter": chap_num,
+                        "url": chap_url # On inclut l'URL du chapitre
                     })
                     
         return flat_items

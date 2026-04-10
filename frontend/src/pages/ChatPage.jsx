@@ -600,7 +600,7 @@ export default function ChatPage() {
       <header className="top-app-bar">
         <div className="top-bar-left">
           <Link to="/" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <img src="/logo.svg" alt="ʿIlm Logo" className="brand-logo" />
+            <img src="/logo.png" alt="ʿIlm Logo" className="brand-logo" />
             <span className="brand-title">ILM AI</span>
           </Link>
         </div>

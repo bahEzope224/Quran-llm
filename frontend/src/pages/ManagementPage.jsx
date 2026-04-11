@@ -105,7 +105,7 @@ export default function ManagementPage() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        <div className="max-w-[1700px] mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-5">
             <Link to="/" className="group flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100/80 transition-all duration-300">
               <span className="material-symbols-outlined text-slate-500 group-hover:text-emerald-600 transition-colors">arrow_back</span>
@@ -136,7 +136,7 @@ export default function ManagementPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
+      <main className="max-w-[1700px] mx-auto px-6 py-12">
         <AnimatePresence mode="wait">
           {activeTab === 'features' ? (
             <motion.div 
@@ -149,15 +149,15 @@ export default function ManagementPage() {
             >
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="max-w-xl">
-                  <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-3">Roadmap Évolutive</h2>
-                  <p className="text-slate-500 font-medium leading-relaxed">
+                  <h2 className="text-5xl font-black text-slate-900 tracking-tight mb-4">Roadmap Évolutive</h2>
+                  <p className="text-slate-500 font-medium text-lg leading-relaxed">
                     Priorisez et planifiez les prochaines capacités du modèle ILM AI. 
                     Chaque feature assure l&apos;alignement avec les valeurs éthiques et religieuses.
                   </p>
                 </div>
                 <button 
                   onClick={() => { setEditingFeature(null); setShowFeatureModal(true); }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white min-h-[52px] px-8 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-[0_12px_24px_rgba(5,150,105,0.2)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white min-h-[56px] px-10 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-[0_12px_24px_rgba(5,150,105,0.2)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
                 >
                   <span className="material-symbols-outlined text-lg">add_circle</span>
                   Nouveau Projet
@@ -170,7 +170,7 @@ export default function ManagementPage() {
                   <p className="font-bold uppercase tracking-widest text-[10px]">Synchronisation...</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
                   {features.map((feature) => (
                     <motion.article 
                       key={feature.id}

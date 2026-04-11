@@ -237,17 +237,17 @@ export default function KanbanBoard() {
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
           {COLUMNS.map(column => (
-            <div key={column.id} className="bg-slate-50/40 rounded-[40px] p-3 border border-slate-200/40 min-h-[600px] flex flex-col">
-              <div className="p-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-xl ${column.bg} flex items-center justify-center`}>
-                    <span className={`material-symbols-outlined text-lg ${column.color}`}>{column.icon}</span>
+            <div key={column.id} className="bg-slate-50/40 rounded-[48px] p-4 border border-slate-200/40 min-h-[750px] flex flex-col shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+              <div className="p-6 flex items-center justify-between mb-2">
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-2xl ${column.bg} flex items-center justify-center shadow-sm`}>
+                    <span className={`material-symbols-outlined text-xl ${column.color}`}>{column.icon}</span>
                   </div>
-                  <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-500">{column.title}</h3>
+                  <h3 className="font-black text-[11px] uppercase tracking-[0.25em] text-slate-500">{column.title}</h3>
                 </div>
-                <span className="bg-white/80 px-2.5 py-1 rounded-lg text-[9px] font-black text-slate-400 border border-slate-100 shadow-sm">
+                <span className="bg-white px-3 py-1 rounded-xl text-[10px] font-black text-slate-400 border border-slate-100 shadow-sm">
                   {tasks.filter(t => t.status === column.id).length}
                 </span>
               </div>

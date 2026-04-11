@@ -86,7 +86,7 @@ export default function ManagementPage() {
     }
   }
 
-  if (!isLoaded) return <div className="flex items-center justify-center min-vh-100 text-slate-400 font-medium">Initialisation...</div>;
+  if (!isLoaded) return <div className="flex items-center justify-center min-h-screen text-slate-400 font-medium font-outfit">Initialisation de l&apos;interface...</div>;
   if (!isSignedIn) return <Navigate to="/sign-in" replace />;
 
   const priorityStyles = {
@@ -157,7 +157,7 @@ export default function ManagementPage() {
                 </div>
                 <button 
                   onClick={() => { setEditingFeature(null); setShowFeatureModal(true); }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white min-h-[56px] px-10 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-[0_12px_24px_rgba(5,150,105,0.2)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white min-h-[56px] px-10 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-[0_12px_24px_rgba(5,150,105,0.2)] transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] font-outfit"
                 >
                   <span className="material-symbols-outlined text-lg">add_circle</span>
                   Nouveau Projet
@@ -167,11 +167,18 @@ export default function ManagementPage() {
               {isLoading ? (
                 <div className="py-32 flex flex-col items-center justify-center text-slate-300">
                   <div className="w-12 h-12 border-4 border-slate-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
-                  <p className="font-bold uppercase tracking-widest text-[10px]">Synchronisation...</p>
+                  <p className="font-bold uppercase tracking-widest text-[10px] font-outfit">Synchronisation...</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
-                  {features.map((feature) => (
+                  {features.length === 0 ? (
+                    <div className="col-span-full py-32 bg-slate-50/40 rounded-[48px] border-2 border-dashed border-slate-200/50 flex flex-col items-center justify-center text-center px-6">
+                      <span className="material-symbols-outlined text-7xl text-slate-200 mb-6 drop-shadow-sm">inventory_2</span>
+                      <h3 className="text-xl font-black text-slate-400 uppercase tracking-[0.2em] mb-2 font-outfit">Le carnet est vide</h3>
+                      <p className="text-slate-300 font-medium max-w-xs">Commencez par ajouter une nouvelle fonctionnalité pour ILM AI.</p>
+                    </div>
+                  ) : (
+                    features.map((feature) => (
                     <motion.article 
                       key={feature.id}
                       layout
@@ -215,15 +222,9 @@ export default function ManagementPage() {
                         <span className="text-[10px] font-bold text-slate-300">ID: {feature.id.slice(0, 8)}</span>
                       </div>
                     </motion.article>
-                  ))}
-                  
-                  {features.length === 0 && (
-                    <div className="col-span-full py-24 text-center bg-slate-50/50 border-2 border-dashed border-slate-200/60 rounded-[40px]">
-                      <span className="material-symbols-outlined text-4xl text-slate-300 mb-4 block">inventory_2</span>
-                      <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Le carnet est vide pour le moment</p>
-                    </div>
-                  )}
-                </div>
+                  ))
+                )}
+              </div>
               )}
             </motion.div>
           ) : (

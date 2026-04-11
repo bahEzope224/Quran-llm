@@ -297,9 +297,9 @@ export default function ManagementPage() {
                       onChange={(e) => setNewFeature({...newFeature, priority: e.target.value})}
                       className="w-full bg-slate-50 border-2 border-transparent focus:border-emerald-500/20 focus:bg-white rounded-2xl px-6 py-4 text-sm font-black outline-none appearance-none cursor-pointer transition-all duration-300"
                     >
-                      <option value="Haute">🔴 Haute</option>
-                      <option value="Moyenne">🟡 Moyenne</option>
-                      <option value="Basse">🟢 Basse</option>
+                      <option value="Haute">🔴 Urgent</option>
+                      <option value="Moyenne">🟡 Important</option>
+                      <option value="Basse">🟢 Normal</option>
                     </select>
                   </div>
                   <div>

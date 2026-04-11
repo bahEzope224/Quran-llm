@@ -280,7 +280,7 @@ export default function ManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 ml-1">Documentation technique</label>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2 ml-1">Description</label>
                   <textarea 
                     value={newFeature.description}
                     onChange={(e) => setNewFeature({...newFeature, description: e.target.value})}

@@ -8,6 +8,7 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  useDroppable,
   defaultDropAnimationSideEffects,
 } from '@dnd-kit/core';
 import {
@@ -27,6 +28,28 @@ const COLUMNS = [
   { id: 'En cours', title: 'En cours', icon: 'bolt', color: 'text-amber-500', bg: 'bg-amber-50/50' },
   { id: 'Terminée', title: 'Terminée', icon: 'check_circle', color: 'text-emerald-500', bg: 'bg-emerald-50/50' }
 ];
+
+function DroppableColumn({ id, title, icon, color, bg, count, children }) {
+  const { setNodeRef } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className="bg-slate-50/40 rounded-[48px] p-4 border border-slate-200/40 min-h-[750px] flex flex-col shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+      <div className="p-6 flex items-center justify-between mb-2">
+        <div className="flex items-center gap-4">
+          <div className={`w-10 h-10 rounded-2xl ${bg} flex items-center justify-center shadow-sm`}>
+            <span className={`material-symbols-outlined text-xl ${color}`}>{icon}</span>
+          </div>
+          <h3 className="font-black text-[11px] uppercase tracking-[0.25em] text-slate-500">{title}</h3>
+        </div>
+        <span className="bg-white px-3 py-1 rounded-xl text-[10px] font-black text-slate-400 border border-slate-100 shadow-sm">
+          {count}
+        </span>
+      </div>
+      <div className="flex-1 p-2">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function SortableTask({ task, onDelete, onEdit }) {
   const {
@@ -145,25 +168,6 @@ export default function KanbanBoard() {
     }
   }
 
-  async function handleUpdateTaskStatus(taskId, newStatus) {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-    
-    try {
-      const token = await getToken();
-      await fetch(`${API_BASE_URL}/management/tasks/${taskId}`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ ...task, status: newStatus })
-      });
-    } catch (error) {
-      console.error("Status update error:", error);
-    }
-  }
-
   async function handleDeleteTask(id) {
     if (!confirm("Supprimer cette tâche ?")) return;
     try {
@@ -192,26 +196,53 @@ export default function KanbanBoard() {
     const activeId = active.id;
     const overId = over.id;
 
-    const overColumn = COLUMNS.find(c => c.id === overId);
-    
-    if (overColumn) {
-      const newStatus = overColumn.id;
-      setTasks(prev => prev.map(t => t.id === activeId ? { ...t, status: newStatus } : t));
-      handleUpdateTaskStatus(activeId, newStatus);
-      return;
+    let nextTasks = [...tasks];
+    const activeTaskObj = tasks.find(t => t.id === activeId);
+    if (!activeTaskObj) return;
+
+    const isOverAColumn = COLUMNS.some(c => c.id === overId);
+
+    if (isOverAColumn) {
+      if (activeTaskObj.status !== overId) {
+        nextTasks = tasks.map(t => 
+          t.id === activeId ? { ...t, status: overId } : t
+        );
+      }
+    } else {
+      const overTaskObj = tasks.find(t => t.id === overId);
+      if (overTaskObj && activeId !== overId) {
+        const oldIndex = tasks.findIndex(t => t.id === activeId);
+        const newIndex = tasks.findIndex(t => t.id === overId);
+        
+        nextTasks = arrayMove(tasks, oldIndex, newIndex);
+        
+        if (nextTasks[newIndex].status !== overTaskObj.status) {
+          nextTasks[newIndex].status = overTaskObj.status;
+        }
+      }
     }
 
-    const overTask = tasks.find(t => t.id === overId);
-    if (overTask && activeId !== overId) {
-      const oldIndex = tasks.findIndex(t => t.id === activeId);
-      const newIndex = tasks.findIndex(t => t.id === overId);
-      
-      const nextTasks = arrayMove(tasks, oldIndex, newIndex);
-      if (nextTasks[newIndex].status !== overTask.status) {
-        nextTasks[newIndex].status = overTask.status;
-        handleUpdateTaskStatus(activeId, overTask.status);
-      }
-      setTasks(nextTasks);
+    setTasks(nextTasks);
+
+    try {
+      const token = await getToken();
+      const reorderPayload = nextTasks.map((task, index) => ({
+        task_id: task.id,
+        order: index,
+        status: task.status
+      }));
+
+      await fetch(`${API_BASE_URL}/management/tasks/reorder`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(reorderPayload)
+      });
+    } catch (error) {
+      console.error("Reorder error:", error);
+      fetchTasks();
     }
   }
 
@@ -239,32 +270,26 @@ export default function KanbanBoard() {
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-start">
           {COLUMNS.map(column => (
-            <div key={column.id} className="bg-slate-50/40 rounded-[48px] p-4 border border-slate-200/40 min-h-[750px] flex flex-col shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-              <div className="p-6 flex items-center justify-between mb-2">
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-2xl ${column.bg} flex items-center justify-center shadow-sm`}>
-                    <span className={`material-symbols-outlined text-xl ${column.color}`}>{column.icon}</span>
-                  </div>
-                  <h3 className="font-black text-[11px] uppercase tracking-[0.25em] text-slate-500">{column.title}</h3>
-                </div>
-                <span className="bg-white px-3 py-1 rounded-xl text-[10px] font-black text-slate-400 border border-slate-100 shadow-sm">
-                  {tasks.filter(t => t.status === column.id).length}
-                </span>
-              </div>
-              
-              <div className="flex-1 p-2">
-                <SortableContext items={tasks.filter(t => t.status === column.id)} strategy={verticalListSortingStrategy}>
-                  {tasks.filter(t => t.status === column.id).map(task => (
-                    <SortableTask 
-                      key={task.id} 
-                      task={task} 
-                      onDelete={handleDeleteTask}
-                      onEdit={(t) => { setEditingTask(t); setNewTask(t); setShowTaskModal(true); }}
-                    />
-                  ))}
-                </SortableContext>
-              </div>
-            </div>
+            <DroppableColumn 
+              key={column.id} 
+              id={column.id}
+              title={column.title}
+              icon={column.icon}
+              color={column.color}
+              bg={column.bg}
+              count={tasks.filter(t => t.status === column.id).length}
+            >
+              <SortableContext items={tasks.filter(t => t.status === column.id)} strategy={verticalListSortingStrategy}>
+                {tasks.filter(t => t.status === column.id).map(task => (
+                  <SortableTask 
+                    key={task.id} 
+                    task={task} 
+                    onDelete={handleDeleteTask}
+                    onEdit={(t) => { setEditingTask(t); setNewTask(t); setShowTaskModal(true); }}
+                  />
+                ))}
+              </SortableContext>
+            </DroppableColumn>
           ))}
         </div>
 

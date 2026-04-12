@@ -109,6 +109,21 @@ async def update_task(task_id: str, task_upd: TaskCreate, db: Session = Depends(
     db.refresh(db_task)
     return db_task
 
+class TaskReorder(BaseModel):
+    task_id: str
+    order: int
+    status: str
+
+@router.put("/tasks/reorder")
+async def reorder_tasks(reorders: List[TaskReorder], db: Session = Depends(get_db)):
+    for item in reorders:
+        db.query(Task).filter(Task.id == item.task_id).update({
+            "order": item.order,
+            "status": item.status
+        })
+    db.commit()
+    return {"status": "success"}
+
 @router.delete("/tasks/{task_id}")
 async def delete_task(task_id: str, db: Session = Depends(get_db)):
     db_task = db.query(Task).filter(Task.id == task_id).first()

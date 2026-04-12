@@ -67,40 +67,78 @@ function SortableTask({ task, onDelete, onEdit }) {
     opacity: isDragging ? 0.3 : 1,
   };
 
+  // Styles dynamiques basés sur le statut
+  const getStatusStyles = () => {
+    switch (task.status) {
+      case 'En cours':
+        return {
+          container: "border-amber-200 hover:border-amber-400 bg-amber-50/30 shadow-amber-900/5",
+          accent: "bg-amber-500",
+          icon: "bolt",
+          iconColor: "text-amber-500"
+        };
+      case 'Terminée':
+        return {
+          container: "border-emerald-200 hover:border-emerald-400 bg-emerald-50/30 shadow-emerald-900/5",
+          accent: "bg-emerald-500",
+          icon: "check_circle",
+          iconColor: "text-emerald-500",
+          title: "text-emerald-900/70"
+        };
+      default:
+        return {
+          container: "border-slate-200/60 hover:border-slate-300 bg-white",
+          accent: "bg-slate-300",
+          icon: "radio_button_unchecked",
+          iconColor: "text-slate-200"
+        };
+    }
+  };
+
+  const statusStyles = getStatusStyles();
+
   return (
     <div 
       ref={setNodeRef} 
       style={style} 
-      className="group bg-white p-5 rounded-2xl border border-slate-200/60 shadow-[0_4px_12px_rgba(0,0,0,0.02)] mb-4 hover:shadow-[0_12px_24px_rgba(0,0,0,0.06)] hover:border-emerald-500/20 transition-all duration-300 relative cursor-default"
+      className={`group p-5 rounded-2xl border ${statusStyles.container} shadow-[0_4px_12px_rgba(0,0,0,0.02)] mb-4 hover:shadow-[0_12px_24px_rgba(0,0,0,0.06)] transition-all duration-500 relative cursor-default overflow-hidden`}
     >
+      {/* Accent line */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${statusStyles.accent} opacity-40`} />
+
       <div className="flex justify-between items-start gap-3 mb-3">
-        <h4 className="text-[13px] font-bold text-slate-800 leading-snug pr-6 tracking-tight">{task.title}</h4>
-        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-200 hover:text-slate-400 p-1 transition-colors">
+        <div className="flex items-start gap-2.5 flex-1">
+          <span className={`material-symbols-outlined text-sm mt-0.5 ${statusStyles.iconColor} transition-all duration-500`}>{statusStyles.icon}</span>
+          <h4 className={`text-[13px] font-bold leading-snug pr-6 tracking-tight transition-all duration-500 ${task.status === 'Terminée' ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+            {task.title}
+          </h4>
+        </div>
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-slate-200 hover:text-slate-400 p-1 transition-colors shrink-0">
           <span className="material-symbols-outlined text-lg">drag_indicator</span>
         </div>
       </div>
       
       {task.description && (
-        <p className="text-[11px] text-slate-400 leading-relaxed font-medium line-clamp-2 mb-4">
+        <p className={`text-[11px] leading-relaxed font-medium line-clamp-2 mb-4 ml-6 transition-all duration-500 ${task.status === 'Terminée' ? 'text-slate-300' : 'text-slate-400'}`}>
           {task.description}
         </p>
       )}
       
-      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between pt-4 border-t border-slate-100/50">
+        <div className="flex items-center gap-2 ml-6">
           {task.date ? (
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded-lg">
-              <span className="material-symbols-outlined text-[12px] text-slate-400">calendar_today</span>
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{task.date}</span>
+            <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all duration-500 ${task.status === 'Terminée' ? 'bg-slate-50 border-slate-100' : 'bg-white/50 border-slate-100/50'}`}>
+              <span className={`material-symbols-outlined text-[12px] ${task.status === 'Terminée' ? 'text-slate-300' : 'text-slate-400'}`}>calendar_today</span>
+              <span className={`text-[9px] font-black uppercase tracking-tighter ${task.status === 'Terminée' ? 'text-slate-300' : 'text-slate-400'}`}>{task.date}</span>
             </div>
           ) : <div />}
         </div>
         
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-          <button onClick={() => onEdit(task)} className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 rounded-full text-slate-300 hover:text-emerald-600 transition-colors">
+          <button onClick={() => onEdit(task)} className="w-7 h-7 flex items-center justify-center hover:bg-white rounded-full text-slate-300 hover:text-emerald-600 shadow-sm border border-transparent hover:border-slate-100 transition-all">
             <span className="material-symbols-outlined text-base">edit_square</span>
           </button>
-          <button onClick={() => onDelete(task.id)} className="w-7 h-7 flex items-center justify-center hover:bg-slate-50 rounded-full text-slate-300 hover:text-rose-600 transition-colors">
+          <button onClick={() => onDelete(task.id)} className="w-7 h-7 flex items-center justify-center hover:bg-white rounded-full text-slate-300 hover:text-rose-600 shadow-sm border border-transparent hover:border-slate-100 transition-all">
             <span className="material-symbols-outlined text-base">delete</span>
           </button>
         </div>

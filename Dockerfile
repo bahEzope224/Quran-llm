@@ -1,5 +1,5 @@
-# Image Python légère
-FROM python:3.11-slim
+# Image Python robuste et complète
+FROM python:3.11-bookworm
 
 # Répertoire de travail dans le conteneur
 WORKDIR /app
@@ -8,10 +8,16 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Dépendances système
+# Dépendances système (compilation et bibliothèques standard)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libffi-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libxml2-dev \
+    libxslt-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copie des dépendances depuis /backend

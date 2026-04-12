@@ -8,6 +8,7 @@ import {
 } from '@clerk/react';
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const rawApiUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
 // Securite : Si l'URL ne commence pas par http, on force le protocole pour eviter les erreurs de chemin relatif

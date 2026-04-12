@@ -10,6 +10,7 @@ from app.routes.user import router as user_router
 
 from app.routes.admin import router as admin_router
 from app.routes.management import router as management_router
+from app.routes.feedback import router as feedback_router
 from app.db.database import engine
 from app.db.models import Base
 
@@ -60,6 +61,7 @@ app.include_router(user_router)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(management_router)
+app.include_router(feedback_router)
 
 
 @app.get("/")

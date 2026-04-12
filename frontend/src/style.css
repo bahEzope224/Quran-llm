@@ -2321,3 +2321,193 @@ a {
   background: #fecaca;
   transform: scale(1.05);
 }
+
+/* --- Bug Reporter Styles --- */
+.bug-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.bug-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.bug-modal-card {
+  position: relative;
+  background: white;
+  width: 100%;
+  max-width: 540px;
+  border-radius: 40px;
+  padding: 2.5rem;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.25);
+  z-index: 1001;
+}
+
+.bug-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.bug-modal-header h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.bug-modal-close {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #94a3b8;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.bug-modal-close:hover {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.bug-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.bug-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bug-form-group label {
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #94a3b8;
+  margin-left: 0.25rem;
+}
+
+.bug-input, .bug-textarea {
+  width: 100%;
+  background: #f8fafc;
+  border: 2px solid transparent;
+  border-radius: 1.25rem;
+  padding: 1rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.bug-input:focus, .bug-textarea:focus {
+  background: white;
+  border-color: rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.05);
+}
+
+.bug-textarea {
+  resize: none;
+}
+
+.bug-modal-footer {
+  display: flex;
+  gap: 1rem;
+  padding-top: 1rem;
+}
+
+.bug-btn-primary {
+  flex: 2;
+  background: #0f172a;
+  color: white;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.15);
+}
+
+.bug-btn-primary:hover:not(:disabled) {
+  background: #1e293b;
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.2);
+}
+
+.bug-btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.bug-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: scale(0.98);
+}
+
+.bug-btn-secondary {
+  flex: 1;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.bug-btn-secondary:hover {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.bug-success-animation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+  text-align: center;
+}
+
+.activity-item-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #fff1f2;
+    color: #e11d48;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.05em;
+    transition: all 0.3s ease;
+    border: 1px solid #ffe4e6;
+}
+
+.activity-item-btn:hover {
+    background: #ffe4e6;
+    transform: scale(1.05);
+}
+
+.activity-item-btn .material-symbols-outlined {
+    font-size: 18px;
+}

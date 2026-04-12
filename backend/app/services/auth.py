@@ -105,3 +105,47 @@ async def get_current_admin(auth: HTTPAuthorizationCredentials = Depends(securit
         message="Impossible de valider la signature du token.",
         location="auth_service.get_current_admin"
     )
+
+async def get_current_user(auth: HTTPAuthorizationCredentials = Depends(security)):
+    """Verifie le token JWT Clerk pour n'importe quel utilisateur authentifie."""
+    token = auth.credentials
+    jwks = get_jwks()
+
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+        rsa_key = {}
+        for key in jwks["keys"]:
+            if key["kid"] == unverified_header["kid"]:
+                rsa_key = {
+                    "kty": key["kty"],
+                    "kid": key["kid"],
+                    "use": key["use"],
+                    "n": key["n"],
+                    "e": key["e"]
+                }
+        
+        if rsa_key:
+            payload = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=["RS256"],
+                audience=None,
+                issuer=CLERK_INSTANCE_URL
+            )
+            return payload
+            
+    except JWTError as e:
+        raise AuthException(
+            message=f"Session invalide ou expiree : {str(e)}",
+            location="auth_service.get_current_user"
+        )
+    except Exception as e:
+        raise AuthException(
+            message=f"Erreur de securite : {str(e)}",
+            location="auth_service.get_current_user"
+        )
+
+    raise AuthException(
+        message="Impossible de valider la signature du token.",
+        location="auth_service.get_current_user"
+    )

@@ -4,6 +4,7 @@ import {
   SignOutButton,
   SignUpButton,
   useUser,
+  useAuth,
 } from '@clerk/react';
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -202,6 +203,13 @@ export default function ChatPage() {
   const [questionInput, setQuestionInput] = useState('');
   const [profile, setProfile] = useState(fallbackProfile);
   const [feedbackStore, setFeedbackStore] = useState({});
+  const { getToken } = useAuth();
+  
+  // Bug Reporter State
+  const [showBugModal, setShowBugModal] = useState(false);
+  const [isSendingBug, setIsSendingBug] = useState(false);
+  const [bugForm, setBugForm] = useState({ title: '', description: '' });
+  const [bugSuccess, setBugSuccess] = useState(false);
 
   // Ouverture intelligente de la sidebar au montage (Desktop uniquement)
   useEffect(() => {
@@ -252,6 +260,37 @@ export default function ChatPage() {
       }
     } catch (error) {
       console.error("Erreur lors de l'envoi du feedback:", error);
+    }
+  };
+
+  const handleReportBug = async (e) => {
+    e.preventDefault();
+    if (!bugForm.title.trim()) return;
+
+    setIsSendingBug(true);
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_BASE_URL}/feedback/bug`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(bugForm)
+      });
+
+      if (response.ok) {
+        setBugSuccess(true);
+        setBugForm({ title: '', description: '' });
+        setTimeout(() => {
+          setBugSuccess(false);
+          setShowBugModal(false);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error("Erreur signalement bug:", error);
+    } finally {
+      setIsSendingBug(false);
     }
   };
 
@@ -984,14 +1023,6 @@ export default function ChatPage() {
                           </div>
                         </section>
                       )}
-
-                      {/* {!message.isComplete && (
-                        <div className="typing-indicator" aria-label="Assistant en train d'ecrire">
-                          <span className="typing-dot" />
-                          <span className="typing-dot" />
-                          <span className="typing-dot" />
-                        </div>
-                      )} */}
                     </div>
                   );
                 })}
@@ -1126,6 +1157,27 @@ export default function ChatPage() {
 
             <article className="profile-card">
               <div className="section-heading">
+                <span className="material-symbols-outlined text-rose-500">bug_report</span>
+                <h2>Reporter un bug</h2>
+              </div>
+
+              <div className="notification-row">
+                <div>
+                  <strong>Aidez-nous à nous améliorer</strong>
+                  <p>Signalez un problème technique ou une erreur de contenu.</p>
+                </div>
+                <button 
+                  className="activity-item-btn"
+                  onClick={() => setShowBugModal(true)}
+                >
+                  <span className="material-symbols-outlined">add_circle</span>
+                  REPORT
+                </button>
+              </div>
+            </article>
+
+            <article className="profile-card">
+              <div className="section-heading">
                 <span className="material-symbols-outlined">notifications</span>
                 <h2>Notifications</h2>
               </div>
@@ -1209,6 +1261,87 @@ export default function ChatPage() {
           </form>
         </div>
       ) : null}
+
+      {/* Modal Bug Reporter */}
+      <AnimatePresence>
+        {showBugModal && (
+          <div className="bug-modal-overlay">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setShowBugModal(false)} 
+              className="bug-modal-backdrop" 
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.9, opacity: 0, y: 20 }} 
+              className="bug-modal-card"
+            >
+              {bugSuccess ? (
+                <div className="bug-success-animation">
+                  <span className="material-symbols-outlined text-emerald-500 text-6xl mb-4 animate-bounce">check_circle</span>
+                  <h3 className="text-2xl font-black font-outfit">Signalement Envoyé !</h3>
+                  <p className="text-slate-400 mt-2 font-medium">Merci, nous allons analyser cela rapidement.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="bug-modal-header">
+                    <div>
+                      <h3 className="text-2xl font-black font-outfit">Signaler un bug</h3>
+                      <p className="text-slate-400 text-sm font-medium">Aidez-nous à rendre ILM AI plus fiable.</p>
+                    </div>
+                    <button onClick={() => setShowBugModal(false)} className="bug-modal-close">
+                      <span className="material-symbols-outlined">close</span>
+                    </button>
+                  </div>
+
+                  <form className="bug-modal-form" onSubmit={handleReportBug}>
+                    <div className="bug-form-group">
+                      <label>Qu&apos;est-ce qui ne va pas ?</label>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="ex: Erreur de chargement des sources"
+                        value={bugForm.title}
+                        onChange={e => setBugForm({...bugForm, title: e.target.value})}
+                        className="bug-input"
+                      />
+                    </div>
+                    <div className="bug-form-group">
+                      <label>Détails (Optionnel)</label>
+                      <textarea 
+                        placeholder="Plus d'informations pour nous aider à reproduire le bug..."
+                        rows={4}
+                        value={bugForm.description}
+                        onChange={e => setBugForm({...bugForm, description: e.target.value})}
+                        className="bug-textarea"
+                      />
+                    </div>
+                    <div className="bug-modal-footer">
+                      <button 
+                        type="button" 
+                        onClick={() => setShowBugModal(false)}
+                        className="bug-btn-secondary"
+                      >
+                        Annuler
+                      </button>
+                      <button 
+                        type="submit" 
+                        disabled={isSendingBug || !bugForm.title.trim()}
+                        className="bug-btn-primary"
+                      >
+                        {isSendingBug ? 'Envoi...' : 'Envoyer le rapport'}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
